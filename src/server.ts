@@ -3,7 +3,7 @@ import dotenv from 'dotenv'
 import { Request, Response, NextFunction } from 'express';
 import userRoutes from './routes/user.routes';
 import { corsMiddleware } from './middleware/cors';
-
+import { addProduct } from './addProduct';
 
 
 
@@ -49,6 +49,8 @@ const StartServer = async () => {
         app.listen(PORT, () => {
             console.log(`Zayelle server is running on http://localhost:${PORT}`);
         });
+        addProduct();
+    
     } catch (err) {
         console.error('Failed to connect to DB:', err);
         console.error(err)
