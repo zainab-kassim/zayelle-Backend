@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import userRoutes from './routes/user.routes';
 import { corsMiddleware } from './middleware/cors';
 import { addProduct } from './addProduct';
+import productRoutes from './routes/product.routes';
 
 
 
@@ -34,6 +35,9 @@ app.use(express.json({ limit: '2mb' }));
 // Middleware to use user routes
 app.use('/api/auth', userRoutes);
 
+// Middleware to use product routes
+app.use('/api/products', productRoutes);
+
 //To handle errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     console.error(err);
@@ -49,7 +53,7 @@ const StartServer = async () => {
         app.listen(PORT, () => {
             console.log(`Zayelle server is running on http://localhost:${PORT}`);
         });
-        addProduct();
+ 
     
     } catch (err) {
         console.error('Failed to connect to DB:', err);
