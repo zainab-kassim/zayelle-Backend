@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import userRoutes from './routes/user.routes';
 import { corsMiddleware } from './middleware/cors';
 import { addProduct } from './addProduct';
+import { generateCollection } from './addCollection';
 import productRoutes from './routes/product.routes';
 
 
@@ -50,10 +51,11 @@ const StartServer = async () => {
     try {
         
         console.log('database connected successfully')
+      
         app.listen(PORT, () => {
             console.log(`Zayelle server is running on http://localhost:${PORT}`);
         });
- 
+  
     
     } catch (err) {
         console.error('Failed to connect to DB:', err);
