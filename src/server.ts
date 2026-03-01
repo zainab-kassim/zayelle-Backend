@@ -4,7 +4,9 @@ import { Request, Response, NextFunction } from 'express';
 import userRoutes from './routes/user.routes';
 import { corsMiddleware } from './middleware/cors';
 import { addProduct } from './addProduct';
+import cookieParser from 'cookie-parser';
 import { generateCollection } from './addCollection';
+import cartRoutes from './routes/cart.routes';
 import productRoutes from './routes/product.routes';
 
 
@@ -26,6 +28,7 @@ app.use(corsMiddleware);
 
 app.options('/', corsMiddleware);
 
+app.use(cookieParser());
 
 // To parse form data in POST request body
 app.use(express.urlencoded({ extended: true }));
@@ -38,6 +41,9 @@ app.use('/api/auth', userRoutes);
 
 // Middleware to use product routes
 app.use('/api/products', productRoutes);
+
+//middleware to use cart routes
+app.use('/api/cart', cartRoutes);
 
 //To handle errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

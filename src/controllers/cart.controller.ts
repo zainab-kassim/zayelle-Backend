@@ -36,7 +36,7 @@ export const addtocart = async (req: any, res: any) => {
     }
 
     const { data: newcart, error: newcarterror } = await supabase.from('carts').insert({
-        userId: userid
+        user_id: userid
     }).select().single();
     if (newcarterror || !newcart) {
         return res.status(500).json({ message: "Error creating new cart", newcarterror })

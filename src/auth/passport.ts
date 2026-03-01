@@ -1,8 +1,8 @@
 import { SecretKey } from "./config";
-import User from "../models/user.model";
 import passport from "passport";
 import { Request } from "express";
 import { Strategy as JwtStrategy } from "passport-jwt";
+import { supabase } from "../config/db";
 
 
 // Function to extract token from cookies
@@ -18,7 +18,7 @@ var opts = {
 
 export default passport.use(new JwtStrategy(opts, async (jwt_payload, done) => {
     try {
-        const user = await User.findOne({ where: { id: jwt_payload.id } })
+        const {data:user} = await supabase.from('users').select('*').eq('id', jwt_payload.id).single()
 
         if (user) {
             return done(null, user);
