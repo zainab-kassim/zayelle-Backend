@@ -6,13 +6,14 @@ export const addtocart = async (req: any, res: any) => {
     const productid = req.body.productid;
     const quantity = req.body.quantity;
 
-    const { data: existingcart, error } = await supabase.from('carts').select().eq('userId', userid).select().single()
+    const { data: existingcart, error } = await supabase.from('carts').select().eq('user_id', userid).select().single()
 
     if (existingcart) {
         const { data: existingcartitems, error: existingcartitemserror } = await supabase.from('cart_items').select().eq('cart_id', existingcart.id).eq('product_id', productid).single();
         if (existingcartitemserror && existingcartitemserror.code !== 'PGRST116') {
             return res.status(500).json({ message: "Error checking existing cart items", existingcartitemserror })
         }
+
         if (existingcartitems) {
             const updatedQuantity = existingcartitems.quantity + 1;
             const { data: updatedCartItem, error: updateCartItemError } = await supabase.from('cart_items').update({ quantity: updatedQuantity }).eq('id', existingcartitems.id).select().single();
@@ -52,4 +53,38 @@ export const addtocart = async (req: any, res: any) => {
     }
     console.log("Item added to new cart:", cartitem);
     return res.status(200).json({ message: "Item added to new cart successfully", cartitem })
+}
+
+
+export const updatecartquantity = async (req: any, res: any) => {
+    const cartitemid = req.body.cartitemid;
+    const quantity = req.body.quantity;
+     
+    const {data:existingcartitem, error:existingcartitemerror}=await supabase.from('cart_items').select().eq('id',cartitemid).single();
+    if(existingcartitemerror || !existingcartitem){
+        return res.status(404).json({message:"Cart item not found",existingcartitemerror})
+    }
+
+    const {data:updatedcartitem,error:updatecartitemerror}=await supabase.from('cart_items').update({quantity}).eq('id',cartitemid).select().single();
+    if(updatecartitemerror || !updatedcartitem){
+        return res.status(500).json({message:"Error updating cart item quantity",updatecartitemerror})
+    }
+    console.log("Cart item quantity updated successfully:",updatedcartitem);
+    return res.status(200).json({message:"quantity updated successfully",cartitem:updatedcartitem})
+}
+
+
+export const deletecartitem=async(req:any,res:any)=>{
+    const cartitemid=req.body.cartitemid;
+    const {data:existingcartitem,error:existingcartitemerror}=await supabase.from('cart_items').select().eq('id',cartitemid).single();
+    if(existingcartitemerror || !existingcartitem){
+        return res.status(404).json({message:"Cart item not found",existingcartitemerror})
+    }
+
+    const {data:deletedcartitem,error:deletedcrtitemerror}=await supabase.from('cart_items').delete().eq('id',cartitemid).select().single();
+    if(deletedcrtitemerror || !deletedcartitem){
+        return res.status(500).json({message:"Error deleting cart item",deletedcrtitemerror})
+    }
+    console.log("Cart item deleted successfully:",deletedcartitem);
+    return res.status(200).json({message:"Cart item deleted successfully",cartitem:deletedcartitem})
 }
