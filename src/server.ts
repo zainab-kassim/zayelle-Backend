@@ -57,7 +57,6 @@ const StartServer = async () => {
     try {
         
         console.log('database connected successfully')
-      
         app.listen(PORT, () => {
             console.log(`Zayelle server is running on http://localhost:${PORT}`);
         });

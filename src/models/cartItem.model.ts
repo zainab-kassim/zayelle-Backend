@@ -3,5 +3,6 @@ export interface cartItem{
     cart_id: number;
     product_id: number;
     quantity: number;
+    price: string;
     createdAt?: Date;
 }
