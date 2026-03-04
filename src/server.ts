@@ -8,6 +8,7 @@ import cookieParser from 'cookie-parser';
 import { generateCollection } from './addCollection';
 import cartRoutes from './routes/cart.routes';
 import productRoutes from './routes/product.routes';
+import orderRoutes from './routes/order.routes';
 
 
 
@@ -44,6 +45,9 @@ app.use('/api/products', productRoutes);
 
 //middleware to use cart routes
 app.use('/api/cart', cartRoutes);
+
+//middleware to use order routes
+app.use('/api/order', orderRoutes);
 
 //To handle errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

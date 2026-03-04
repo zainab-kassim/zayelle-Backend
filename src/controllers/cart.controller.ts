@@ -1,4 +1,5 @@
 import { supabase } from "../config/db";
+import { Request, Response } from "express";
 
 
 export const addtocart = async (req: any, res: any) => {

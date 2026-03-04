@@ -4,5 +4,7 @@ export interface cartItem{
     product_id: number;
     quantity: number;
     price: string;
+    size : string;
+    unitprice: string;
     createdAt?: Date;
 }
