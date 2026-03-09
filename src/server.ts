@@ -9,8 +9,8 @@ import { generateCollection } from './addCollection';
 import cartRoutes from './routes/cart.routes';
 import productRoutes from './routes/product.routes';
 import orderRoutes from './routes/order.routes';
-import paymentRoutes from './routes/payment.routes';
-
+import paymentRoutes from './routes/paystack.payment.routes';
+import stripePaymentRoutes from './routes/stripe.payment.routes';
 
 
 const PORT = 4000;
@@ -50,7 +50,10 @@ app.use('/api/cart', cartRoutes);
 app.use('/api/order', orderRoutes);
 
 //middleware to use payment routes
-app.use('/api/payment', paymentRoutes);
+app.use('/api/payment/paystack', paymentRoutes);
+
+//middleware for stripe payment routes
+app.use('/api/payment/stripe',stripePaymentRoutes);
 
 //To handle errors
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {

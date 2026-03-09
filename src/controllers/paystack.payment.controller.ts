@@ -37,7 +37,7 @@ export const initializePayment = async (req: Request, res: Response) => {
     if (updated_order_error) {
         return res.status(500).json({ message: "Error updating order with reference"})
     }
-    console.log("Updated order with reference:", updated_order)
+    console.log("Updated order with reference:")
 
     return res.status(200).json({ 
         message: "Payment initialized successfully", 
