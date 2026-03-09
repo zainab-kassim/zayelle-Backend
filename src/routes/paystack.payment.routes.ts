@@ -1,4 +1,4 @@
-import { initializePayment,verifyPayment } from "../controllers/Paystack.payment.controller";
+import { initializePayment,verifyPayment } from "../controllers/paystack.payment.controller";
 import { Router } from "express";
 import { handleAsyncErr } from "../utils/handleAsyncErr";
 import passport from "../auth/passport";

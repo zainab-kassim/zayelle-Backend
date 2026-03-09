@@ -14,6 +14,7 @@ export const addtocart = async (req: any, res: any) => {
 
     if (existingcart) {
         const { data: existingcartitems, error: existingcartitemserror } = await supabase.from('cart_items').select().eq('cart_id', existingcart.id).eq('product_id', productid).eq('size', size).single();
+       
         if (existingcartitemserror && existingcartitemserror.code !== 'PGRST116') {
             return res.status(500).json({ message: "Error checking existing cart items", existingcartitemserror })
         }

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { Request, Response } from "express";
 import { supabase } from "../config/db";
+import { handlePostPayment } from "../utils/handlePostPayment";
 
 
 export const initializePayment = async (req: Request, res: Response) => {
@@ -35,16 +36,16 @@ export const initializePayment = async (req: Request, res: Response) => {
         .single()
 
     if (updated_order_error) {
-        return res.status(500).json({ message: "Error updating order with reference"})
+        return res.status(500).json({ message: "Error updating order with reference" })
     }
     console.log("Updated order with reference:")
 
-    return res.status(200).json({ 
-        message: "Payment initialized successfully", 
+    return res.status(200).json({
+        message: "Payment initialized successfully",
         auth_url: response.data.data.authorization_url,
-        reference 
+        reference
     });
-   
+
 }
 
 
@@ -70,16 +71,24 @@ export const verifyPayment = async (req: Request, res: Response) => {
             .from('order')
             .update({ status: ['success'] })
             .eq('reference', reference)
+            .select()
             .single();
         if (updatedorderstatuserror) {
             return res.status(500).json({ message: "Error updating order status", updatedorderstatuserror })
         }
 
-        return res.status(200).json({ 
-            message: "Payment successful", 
-            status: response.data.data.status 
+        const cart_id = updatedorderstatus.cart_id;
+        const order_id = updatedorderstatus.id;
+
+        await handlePostPayment(order_id, cart_id);
+       
+        return res.status(200).json({
+            message: "Payment successful",
+            status: response.data.data.status
         });
     } else {
         return res.status(401).json({ message: "Payment not successful" });
     }
+
+
 }

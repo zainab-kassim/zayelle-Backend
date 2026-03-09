@@ -1,8 +1,9 @@
 import Stripe from "stripe";
 import { Request, Response } from "express";
 import { supabase } from "../config/db";
+import { handlePostPayment } from "../utils/handlePostPayment";
 
-const stripe= new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
     apiVersion: "2026-02-25.clover"
 })
 
@@ -26,12 +27,12 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
 
     const { data: updatedOrder, error: updatedOrderError } = await supabase
         .from('order')
-        .update({ paymentIntent_id: paymentIntent.id,currency,local_amount })
+        .update({ paymentIntent_id: paymentIntent.id, currency, local_amount })
         .eq('id', order_id)
         .single();
 
     if (updatedOrderError) {
-        return res.status(500).json({ message: "Error updating order with payment intent ID",updatedOrderError});
+        return res.status(500).json({ message: "Error updating order with payment intent ID", updatedOrderError });
     }
 
     return res.status(200).json({
@@ -53,16 +54,21 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
             .from('order')
             .update({ status: ['success'] })
             .eq('payment_intent_id', paymentIntent_id)
+            .select()
             .single();
 
         if (updatedorderstatusError) {
-            return res.status(500).json({ 
-                message: "Error updating order status", 
-                updatedorderstatusError 
+            return res.status(500).json({
+                message: "Error updating order status",
+                updatedorderstatusError
             });
         }
+        const cart_id = updatedorderstatus.cart_id;
+        const order_id = updatedorderstatus.id;
+        
+        await handlePostPayment(order_id, cart_id);
 
-        return res.status(200).json({ message: "Order successful"});
+        return res.status(200).json({ message: "Order successful" });
 
     } else {
         return res.status(400).json({ message: "Payment not successful" });
