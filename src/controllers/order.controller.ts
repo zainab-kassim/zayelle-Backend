@@ -59,3 +59,34 @@ export const getorderhistory = async (req: any, res: any) => {
 
     return res.status(200).json({ orders })
 }
+
+export const updateshippinginfo = async (req: any, res: any) => {
+    if (!req.user) {
+        return res.status(401).json({ message: "User not authenticated" });
+    }
+    const order_id = req.body.order_id;
+    const street_address = req.body.street_address;
+    const apt_no = req.body.apt_no;
+    const phone_number = req.body.phone_number;
+    const city = req.body.city;
+    const state = req.body.state;
+    const postal_code = req.body.postal_code;
+    const country = req.body.country;
+
+    const { data: updatedorder, error: updatedordererror } = await supabase.from('order').update({
+        street_address,
+        apt_no,
+        phone_number,
+        city,
+        state,
+        postal_code,
+        country
+    }).eq('id', order_id).select().single();
+
+    if (updatedordererror) {
+        return res.status(500).json({ message: "Error updating shipping info", updatedordererror })
+    }
+    
+
+    return res.json({ message: "Shipping info updated successfully", order: updatedorder })
+}
