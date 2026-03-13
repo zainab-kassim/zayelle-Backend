@@ -51,7 +51,7 @@ export const getorderhistory = async (req: any, res: any) => {
     }
     const user_id = req.user.id;
 
-    const { data: orders, error } = await supabase.from('order').select(`*,cart_id(*,cart_items(*, product_id(name,slug,image,description)))`).eq('user_id', user_id);
+    const { data: orders, error } = await supabase.from('order').select(`*,cart_id(*,order_items(*, product_id(name,slug,image,description)))`).eq('user_id', user_id);
 
     if (error) {
         return res.status(500).json({ message: "Error fetching order history", error })
