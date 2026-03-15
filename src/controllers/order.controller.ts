@@ -18,6 +18,8 @@ export const createorder = async (req: Request, res: Response) => {
     const postal_code = req.body.postal_code;
     const country = req.body.country;
 
+    console.log('worked')
+
     const { data: existingcart, error: existingcarterror } = await supabase.from('carts').select(``).eq('id', cart_id).single();
     if (existingcarterror || !existingcart) {
         return res.status(404).json({ message: "Cart not found", existingcarterror })
@@ -51,13 +53,14 @@ export const getorderhistory = async (req: any, res: any) => {
     }
     const user_id = req.user.id;
 
-    const { data: orders, error } = await supabase.from('order').select(`*,cart_id(*,order_items(*, product_id(name,slug,image,description)))`).eq('user_id', user_id);
+    const { data: orders, error } = await supabase.from('order').select(`*, order_items(*, product_id(name, slug, image, description))`).eq('user_id', user_id).contains('status',['success'])
+
 
     if (error) {
         return res.status(500).json({ message: "Error fetching order history", error })
     }
 
-    return res.status(200).json({ orders })
+    return res.status(200).json({ message: "Order history fetched successfully", orders })
 }
 
 export const updateshippinginfo = async (req: any, res: any) => {
@@ -82,6 +85,8 @@ export const updateshippinginfo = async (req: any, res: any) => {
         postal_code,
         country
     }).eq('id', order_id).select().single();
+
+    console.log(updatedorder)
 
     if (updatedordererror) {
         return res.status(500).json({ message: "Error updating shipping info", updatedordererror })

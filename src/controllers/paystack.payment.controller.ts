@@ -11,7 +11,7 @@ export const initializePayment = async (req: Request, res: Response) => {
     const email = req.user.email;
     const order_id = req.body.order_id;
     const total_price = req.body.total_price;
-    const converted_price = parseInt(total_price) * 100;
+    const converted_price = parseInt(total_price.replace(/,/g, '')) * 100;
     const reference = `ZAYELLE_${order_id}_${Date.now()}`;
 
     const response = await axios.post(

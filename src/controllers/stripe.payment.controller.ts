@@ -15,7 +15,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
     const local_amount = req.body.total_price;
     const currency = req.body.currency;
     const order_id = req.body.order_id;
-    const converted_price = parseInt(local_amount) * 100;
+    const converted_price = parseInt(local_amount.replace(/,/g, '')) * 100;
 
     const paymentIntent = await stripe.paymentIntents.create({
         amount: converted_price,
