@@ -21,7 +21,7 @@ describe('paystack payment routes', () => {
         const response = await request(app)
         .post('/api/payment/paystack/initialize')
         .send({
-            email: "kassimzainab111@gmail.com",
+            email: `${process.env.TESTEMAIL}`,
             order_id: 7,
             total_price: "49,000"
         })

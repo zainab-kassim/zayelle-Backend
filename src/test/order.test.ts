@@ -29,7 +29,7 @@ describe('Order Routes', () => {
             phone_number: "565-9877",
             city: "Ottawa",
             state: "Ontario",
-            postal_code: "K1V 7P8",
+            postal_code: "K1V 9P8",
             country: "Canada"
         })
         expect(response.status).toBe(200)

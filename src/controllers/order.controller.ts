@@ -18,7 +18,6 @@ export const createorder = async (req: Request, res: Response) => {
     const postal_code = req.body.postal_code;
     const country = req.body.country;
 
-    console.log('worked')
 
     const { data: existingcart, error: existingcarterror } = await supabase.from('carts').select(``).eq('id', cart_id).single();
     if (existingcarterror || !existingcart) {
@@ -86,7 +85,6 @@ export const updateshippinginfo = async (req: any, res: any) => {
         country
     }).eq('id', order_id).select().single();
 
-    console.log(updatedorder)
 
     if (updatedordererror) {
         return res.status(500).json({ message: "Error updating shipping info", updatedordererror })

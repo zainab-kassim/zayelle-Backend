@@ -42,7 +42,7 @@ export const addtocart = async (req: any, res: any) => {
         if (cartitemerror || !cartitem) {
             return res.status(500).json({ message: "Error adding item to cart", cartitemerror })
         }
-        console.log("Item added to existing cart:", cartitem);
+     
         return res.status(200).json({ message: "Item added to cart successfully", cartitem })
     }
 
@@ -64,7 +64,7 @@ export const addtocart = async (req: any, res: any) => {
     if (cartitemerror || !cartitem) {
         return res.status(500).json({ message: "Error adding item to cart", cartitemerror })
     }
-    console.log("Item added to new cart:", cartitem);
+    
     return res.status(200).json({ message: "Item added to new cart successfully", cartitem })
 }
 

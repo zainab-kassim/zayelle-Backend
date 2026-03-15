@@ -36,7 +36,7 @@ describe('stripe payment routes', () => {
 describe('stripe payment verification route', () => {
     it('should verify a stripe payment', async () => {
         const response = await request(app)
-        .get('/api/payment/stripe/verify-payment/pi_3TBLlLRt5F9M13321Wtxe2Rn')
+        .get(`/api/payment/stripe/verify-payment/${process.env.PAYMENTINTENTID}`)
         .set('Cookie', `accessToken=${accesstoken}`)
         expect(response.status).toBe(400);
         expect(response.body).toEqual({ message: "Payment not successful" })
