@@ -9,8 +9,7 @@ export const initializePayment = async (req: Request, res: Response) => {
         return res.status(401).json({ message: "User not authenticated" });
     }
     const email = req.user.email;
-    const order_id = req.body.order_id;
-    const total_price = req.body.total_price;
+    const { order_id, total_price } = req.body;
     const converted_price = parseInt(total_price.replace(/,/g, '')) * 100;
     const reference = `ZAYELLE_${order_id}_${Date.now()}`;
 
@@ -81,7 +80,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
         const order_id = updatedorderstatus.id;
 
         await handlePostPayment(order_id, cart_id);
-       
+
         return res.status(200).json({
             message: "Payment successful",
             status: response.data.data.status

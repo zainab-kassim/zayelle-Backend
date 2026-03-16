@@ -1,10 +1,11 @@
-import passport from "../auth/passport";
 import { createorder,getorderhistory, updateshippinginfo } from "../controllers/order.controller";
 import { handleAsyncErr } from "../utils/handleAsyncErr";
+import { isLoggedIn } from "../middleware/isLoggedIn";
 import { Router } from "express";
 
+
 const router = Router();
-router.post('/',passport.authenticate('jwt', { session: false }), handleAsyncErr(createorder));
-router.get('/orderhistory', passport.authenticate('jwt', { session: false }), handleAsyncErr(getorderhistory));
-router.post('/edit-shipping-info', passport.authenticate('jwt', { session: false }), handleAsyncErr(updateshippinginfo));
+router.post('/',isLoggedIn, handleAsyncErr(createorder));
+router.get('/orderhistory', isLoggedIn, handleAsyncErr(getorderhistory));
+router.post('/edit-shipping-info', isLoggedIn, handleAsyncErr(updateshippinginfo));
 export default router;

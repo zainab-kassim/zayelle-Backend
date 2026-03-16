@@ -9,12 +9,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 export const createPaymentIntent = async (req: Request, res: Response) => {
     if (!req.user) {
-        return res.status(401).json({ message: "User not authenticated" });
+        return res.status(401).json({ message: "Unauthorized" });
     }
-
-    const local_amount = req.body.total_price;
-    const currency = req.body.currency;
-    const order_id = req.body.order_id;
+    const { local_amount, currency, order_id } = req.body;
     const converted_price = parseInt(local_amount.replace(/,/g, '')) * 100;
 
     const paymentIntent = await stripe.paymentIntents.create({
@@ -65,7 +62,7 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         }
         const cart_id = updatedorderstatus.cart_id;
         const order_id = updatedorderstatus.id;
-        
+
         await handlePostPayment(order_id, cart_id);
 
         return res.status(200).json({ message: "Order successful" });

@@ -23,13 +23,13 @@ describe('Order Routes', () => {
         .set('Cookie', `accessToken=${accesstoken}`)
         .send({
             cart_id:7,
-            total_price: "136,000",
+            total_price: "38,000",
             street_address: "123  baycrest St",
-            apt_no: "Apt 5d",
-            phone_number: "565-9877",
+            apt_no: "Apt 5n",
+            phone_number: "565-9899",
             city: "Ottawa",
-            state: "Ontario",
-            postal_code: "K1V 9P8",
+            state: "On",
+            postal_code: "K1V 9K8",
             country: "Canada"
         })
         expect(response.status).toBe(200)

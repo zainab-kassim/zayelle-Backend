@@ -1,5 +1,3 @@
-
-
 export interface products{
     id: number;
     collectionid: number;

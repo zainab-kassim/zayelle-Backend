@@ -1,4 +1,3 @@
-
 export interface collections {
     id: number;
     name: string;

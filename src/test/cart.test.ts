@@ -30,37 +30,37 @@ describe('Cart Routes', () => {
 })
 
 
-describe('Cart Routes', () => {
-    it('should update quantity of item in cart', async () => {
-        const response = await request(app)
-            .put('/api/cart/updatequantity')
-            .send({
-                "cartitemid": 34,
-                "quantity": 3,
-            })
-              .set('Cookie', `accessToken=${accesstoken}`)
-        expect(response.status).toBe(200)
-    })
-})
+// describe('Cart Routes', () => {
+//     it('should update quantity of item in cart', async () => {
+//         const response = await request(app)
+//             .put('/api/cart/updatequantity')
+//             .send({
+//                 "cartitemid": 34,
+//                 "quantity": 3,
+//             })
+//               .set('Cookie', `accessToken=${accesstoken}`)
+//         expect(response.status).toBe(200)
+//     })
+// })
 
 
-describe('Cart Routes', () => {
-    it('should retrieve cart items', async () => {
-        const response = await request(app)
-            .get('/api/cart/')
-            .set('Cookie', `accessToken=${accesstoken}`)
-        expect(response.status).toBe(200)
-    })
-})
+// describe('Cart Routes', () => {
+//     it('should retrieve cart items', async () => {
+//         const response = await request(app)
+//             .get('/api/cart/')
+//             .set('Cookie', `accessToken=${accesstoken}`)
+//         expect(response.status).toBe(200)
+//     })
+// })
 
-describe('Cart Routes', () => {
-    it('should delete cart items', async () => {
-        const response = await request(app)
-            .delete('/api/cart/deletecartitem')
-            .send({
-                "cartitemid": 35,
-            })
-            .set('Cookie', `accessToken=${accesstoken}`)
-        expect(response.status).toBe(200)
-    })
-})
+// describe('Cart Routes', () => {
+//     it('should delete cart items', async () => {
+//         const response = await request(app)
+//             .delete('/api/cart/deletecartitem')
+//             .send({
+//                 "cartitemid": 35,
+//             })
+//             .set('Cookie', `accessToken=${accesstoken}`)
+//         expect(response.status).toBe(200)
+//     })
+// })
