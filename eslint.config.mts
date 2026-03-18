@@ -15,7 +15,6 @@ export default defineConfig([
       sourceType: "module",
     },
     rules: {
-      "no-unused-vars": "warn",
       "eqeqeq": "error",
     },
   },
