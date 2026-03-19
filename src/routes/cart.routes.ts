@@ -1,7 +1,12 @@
-import { addtocart,updatecartquantity,deletecartitem, getcart} from "../controllers/cart.controller";
-import { isLoggedIn } from "../middleware/isLoggedIn";
-import { handleAsyncErr } from "../utils/handleAsyncErr";
-import { Router } from "express";
+import {
+  addtocart,
+  updatecartquantity,
+  deletecartitem,
+  getcart,
+} from '../controllers/cart.controller';
+import { isLoggedIn } from '../middleware/isLoggedIn';
+import { handleAsyncErr } from '../utils/handleAsyncErr';
+import { Router } from 'express';
 
 const router = Router();
 router.get('/', isLoggedIn, handleAsyncErr(getcart));

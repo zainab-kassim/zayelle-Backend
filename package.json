@@ -10,14 +10,18 @@
     ]
   },
   "lint-staged": {
-  "*.{ts,js}": ["eslint --fix", "prettier --write"]
-},
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
   "scripts": {
     "dev": "ts-node src/server.ts",
+    "format": "prettier --write .",
     "test": "jest",
     "prepare": "husky",
-      "lint": "eslint .",
-  "format:check": "prettier --check ."
+    "lint": "eslint .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",

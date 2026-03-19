@@ -26,12 +26,10 @@ export const addtocart = async (req: Request, res: Response) => {
         .single();
 
     if (existingcartitemserror && existingcartitemserror.code !== 'PGRST116') {
-      return res
-        .status(500)
-        .json({
-          message: 'Error checking existing cart items',
-          existingcartitemserror,
-        });
+      return res.status(500).json({
+        message: 'Error checking existing cart items',
+        existingcartitemserror,
+      });
     }
 
     if (existingcartitems) {
@@ -48,20 +46,16 @@ export const addtocart = async (req: Request, res: Response) => {
           .select()
           .single();
       if (updateCartItemError || !updatedCartItem) {
-        return res
-          .status(500)
-          .json({
-            message: 'Error updating cart item quantity',
-            updateCartItemError,
-          });
+        return res.status(500).json({
+          message: 'Error updating cart item quantity',
+          updateCartItemError,
+        });
       }
       console.log('Cart item quantity updated:', updatedCartItem);
-      return res
-        .status(200)
-        .json({
-          message: 'Cart item quantity updated successfully',
-          cartItem: updatedCartItem,
-        });
+      return res.status(200).json({
+        message: 'Cart item quantity updated successfully',
+        cartItem: updatedCartItem,
+      });
     }
 
     const { data: cartitem, error: cartitemerror } = await supabase
@@ -156,20 +150,16 @@ export const updatecartquantity = async (req: Request, res: Response) => {
     .select()
     .single();
   if (updatecartitemerror || !updatedcartitem) {
-    return res
-      .status(500)
-      .json({
-        message: 'Error updating cart item quantity',
-        updatecartitemerror,
-      });
+    return res.status(500).json({
+      message: 'Error updating cart item quantity',
+      updatecartitemerror,
+    });
   }
   console.log('Cart item quantity updated successfully:', updatedcartitem);
-  return res
-    .status(200)
-    .json({
-      message: 'quantity updated successfully',
-      cartitem: updatedcartitem,
-    });
+  return res.status(200).json({
+    message: 'quantity updated successfully',
+    cartitem: updatedcartitem,
+  });
 };
 
 export const deletecartitem = async (req: Request, res: Response) => {
@@ -194,12 +184,10 @@ export const deletecartitem = async (req: Request, res: Response) => {
       .json({ message: 'Error deleting cart item', deletedcrtitemerror });
   }
   console.log('Cart item deleted successfully:', deletedcartitem);
-  return res
-    .status(200)
-    .json({
-      message: 'Cart item deleted successfully',
-      cartitem: deletedcartitem,
-    });
+  return res.status(200).json({
+    message: 'Cart item deleted successfully',
+    cartitem: deletedcartitem,
+  });
 };
 
 export const getcart = async (req: Request, res: Response) => {
@@ -226,11 +214,9 @@ export const getcart = async (req: Request, res: Response) => {
       .status(500)
       .json({ message: 'Error retrieving cart items', cartitemserror });
   }
-  return res
-    .status(200)
-    .json({
-      message: 'Cart items retrieved successfully',
-      cartitems,
-      firstname: existingcart.user_id.firstname,
-    });
+  return res.status(200).json({
+    message: 'Cart items retrieved successfully',
+    cartitems,
+    firstname: existingcart.user_id.firstname,
+  });
 };

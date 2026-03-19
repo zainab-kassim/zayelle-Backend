@@ -74,12 +74,10 @@ export const verifyPayment = async (req: Request, res: Response) => {
         .select()
         .single();
     if (updatedorderstatuserror) {
-      return res
-        .status(500)
-        .json({
-          message: 'Error updating order status',
-          updatedorderstatuserror,
-        });
+      return res.status(500).json({
+        message: 'Error updating order status',
+        updatedorderstatuserror,
+      });
     }
 
     const cart_id = updatedorderstatus.cart_id;

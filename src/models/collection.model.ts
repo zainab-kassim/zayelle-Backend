@@ -1,7 +1,7 @@
 export interface collections {
-    id: number;
-    name: string;
-    description: string;
-    image: string;
-    slug: string;
+  id: number;
+  name: string;
+  description: string;
+  image: string;
+  slug: string;
 }
