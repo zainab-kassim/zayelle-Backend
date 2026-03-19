@@ -15,7 +15,9 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "test": "jest",
-    "prepare": "husky"
+    "prepare": "husky",
+      "lint": "eslint .",
+  "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
