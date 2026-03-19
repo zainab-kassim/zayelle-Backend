@@ -1,9 +1,9 @@
-export interface users{
-    id: number;
-    firstname: string;
-    lastname: string;
-    email: string;
-    phonenumber: string;
-    password: string;
-    createdat?: Date;
+export interface users {
+  id: number;
+  email: string;
+  firstname: string;
+  lastname: string;
+  phonenumber: string;
+  password: string;
+  createdat?: Date;
 }
