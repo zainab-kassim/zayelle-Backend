@@ -52,12 +52,10 @@ export const UserSignup = async (req: Request, res: Response) => {
 
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
-  res
-    .status(200)
-    .json({
-      message: 'user signed up successfully',
-      user: { firstname: newUser.firstname },
-    });
+  res.status(200).json({
+    message: 'user signed up successfully',
+    user: { firstname: newUser.firstname },
+  });
 };
 
 export const UserLogin = async (req: Request, res: Response) => {
@@ -85,12 +83,10 @@ export const UserLogin = async (req: Request, res: Response) => {
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
 
-  res
-    .status(200)
-    .json({
-      message: 'user logged in successfully',
-      user: { firstname: user.firstname },
-    });
+  res.status(200).json({
+    message: 'user logged in successfully',
+    user: { firstname: user.firstname },
+  });
 };
 
 export const UserLogout = async (req: Request, res: Response) => {
