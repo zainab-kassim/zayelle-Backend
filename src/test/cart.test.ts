@@ -34,7 +34,7 @@ describe('Cart Routes', () => {
     const response = await request(app)
       .put('/api/cart/updatequantity')
       .send({
-        cartitemid: 43,
+        cartitemid: 45,
         quantity: 3,
       })
       .set('Cookie', `accessToken=${accesstoken}`);

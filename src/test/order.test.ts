@@ -21,14 +21,14 @@ describe('Order Routes', () => {
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
         cart_id: 7,
-        total_price: '38,000',
-        street_address: '123  baycrest St',
+        total_price: '114,000',
+        street_address: '12 baycrest St',
         apt_no: 'Apt 5n',
         phone_number: '565-9899',
-        city: 'Ottawa',
-        state: 'On',
+        city: 'Lekki',
+        state: 'Lagos',
         postal_code: 'K1V 9K8',
-        country: 'Canada',
+        country: 'Nigeria',
       });
     expect(response.status).toBe(200);
   });
@@ -50,8 +50,8 @@ describe('Order Routes', () => {
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
         order_id: 10,
-        street_address: '456 Elm St',
-        apt_no: 'Apt 5C',
+        street_address: '31 popoola street',
+        apt_no: 'Apt 5D',
       });
     expect(response.status).toBe(200);
   });

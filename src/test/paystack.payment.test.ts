@@ -20,7 +20,7 @@ describe('paystack payment routes', () => {
       .post('/api/payment/paystack/initialize')
       .send({
         email: `${process.env.TESTEMAIL}`,
-        order_id: 5,
+        order_id: 11,
         total_price: '114,000',
       })
       .set('Cookie', `accessToken=${accesstoken}`);
@@ -34,7 +34,7 @@ describe('paystack payment routes', () => {
 describe('paystack payment routes', () => {
   it('should verify a paystack payment', async () => {
     const response = await request(app)
-      .get('/api/payment/paystack/verify/ZAYELLE_9_1773682885768')
+      .get('/api/payment/paystack/verify/ZAYELLE_11_1774297353466')
       .set('Cookie', `accessToken=${accesstoken}`);
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('message', 'Payment successful');
