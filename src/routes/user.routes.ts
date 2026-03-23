@@ -6,10 +6,17 @@ import {
 } from '../controllers/user.controller';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
+import { userSignupSchema } from '../schemas/user.signup.schema';
+import { userLoginSchema } from '../schemas/user.login.schema';
+import { validateUser } from '../middleware/validate';
 
 const router = Router();
-router.post('/signup', handleAsyncErr(UserSignup));
-router.post('/login', handleAsyncErr(UserLogin));
+router.post(
+  '/signup',
+  validateUser(userSignupSchema),
+  handleAsyncErr(UserSignup),
+);
+router.post('/login', validateUser(userLoginSchema), handleAsyncErr(UserLogin));
 router.post('/logout', handleAsyncErr(UserLogout));
 
 //Refresh Token

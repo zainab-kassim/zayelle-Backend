@@ -23,7 +23,7 @@ export const UserSignup = async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'User already exists' });
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 12);
 
   const { data: newUser, error } = await supabase
     .from('users')
@@ -52,11 +52,12 @@ export const UserSignup = async (req: Request, res: Response) => {
 
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
-
-  console.log('New user created:', newUser);
   res
     .status(200)
-    .json({ message: 'user signed up successfully', user: newUser });
+    .json({
+      message: 'user signed up successfully',
+      user: { firstname: newUser.firstname },
+    });
 };
 
 export const UserLogin = async (req: Request, res: Response) => {
@@ -66,19 +67,17 @@ export const UserLogin = async (req: Request, res: Response) => {
     .from('users')
     .select()
     .eq('email', email)
-    .select()
     .single();
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
   if (error || !user) {
     return res.status(404).json({ message: 'User not found' });
   }
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-
   if (!isPasswordValid) {
     return res.status(401).json({ message: 'Invalid credentials' });
   }
-
-  console.log('User authenticated successfully');
 
   const accessToken = GenerateAccessToken({ email: user.email, id: user.id });
   const refreshToken = GenerateRefreshToken({ email: user.email, id: user.id });
@@ -86,8 +85,12 @@ export const UserLogin = async (req: Request, res: Response) => {
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
 
-  console.log('User logged in:', user);
-  res.status(200).json({ message: 'user logged in successfully', user: user });
+  res
+    .status(200)
+    .json({
+      message: 'user logged in successfully',
+      user: { firstname: user.firstname },
+    });
 };
 
 export const UserLogout = async (req: Request, res: Response) => {
@@ -106,7 +109,12 @@ export const refreshToken = async (req: Request, res: Response) => {
     });
   }
 
-  if (!RefreshSecretKey) throw new Error('Missing Refresh SECRET_KEY');
+  if (!RefreshSecretKey) {
+    return res.status(500).json({
+      message: 'Refresh token secret key not found',
+      code: 'REFRESH_TOKEN_SECRET_KEY_NOT_CONFIGURED',
+    });
+  }
 
   jwt.verify(
     refreshToken,

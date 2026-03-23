@@ -122,8 +122,7 @@ export const addtocart = async (req: Request, res: Response) => {
 };
 
 export const updatecartquantity = async (req: Request, res: Response) => {
-  const cartitemid = req.body.cartitemid;
-  const quantity = req.body.quantity;
+  const { cartitemid, quantity } = req.body;
 
   const { data: existingcartitem, error: existingcartitemerror } =
     await supabase.from('cart_items').select().eq('id', cartitemid).single();
@@ -132,18 +131,13 @@ export const updatecartquantity = async (req: Request, res: Response) => {
       .status(404)
       .json({ message: 'Cart item not found', existingcartitemerror });
   }
-  const updatedQuantity =
-    parseInt(existingcartitem.quantity) + parseInt(quantity);
-  if (updatedQuantity < 1) {
-    return res.status(400).json({ message: 'Quantity must be at least 1' });
-  }
 
   const { data: updatedcartitem, error: updatecartitemerror } = await supabase
     .from('cart_items')
     .update({
-      quantity: updatedQuantity,
+      quantity,
       price: (
-        parseInt(existingcartitem.unitprice.replace(/,/g, '')) * updatedQuantity
+        parseInt(existingcartitem.unitprice.replace(/,/g, '')) * quantity
       ).toLocaleString('en-US'),
     })
     .eq('id', cartitemid)
