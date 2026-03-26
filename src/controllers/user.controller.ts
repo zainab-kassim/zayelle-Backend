@@ -19,8 +19,12 @@ export const UserSignup = async (req: Request, res: Response) => {
     .select()
     .eq('email', email)
     .single();
+
   if (existingUser) {
-    return res.status(400).json({ message: 'User already exists' });
+    return res.status(200).json({
+      message:
+        'If this email is not registered, you will receive a confirmation shortly.',
+    });
   }
 
   const hashedPassword = await bcrypt.hash(password, 12);
@@ -38,7 +42,7 @@ export const UserSignup = async (req: Request, res: Response) => {
     .single();
 
   if (error || !newUser) {
-    return res.status(500).json({ message: 'Error creating user', error });
+    return res.status(500).json({ message: 'Error creating user' });
   }
 
   const accessToken = GenerateAccessToken({
@@ -69,12 +73,8 @@ export const UserLogin = async (req: Request, res: Response) => {
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
 
-  if (error || !user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-
-  if (!isPasswordValid) {
-    return res.status(401).json({ message: 'Invalid credentials' });
+  if (!user || !isPasswordValid || error) {
+    return res.status(401).json({ message: 'Invalid email or password' });
   }
 
   const accessToken = GenerateAccessToken({ email: user.email, id: user.id });
@@ -83,7 +83,7 @@ export const UserLogin = async (req: Request, res: Response) => {
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
 
-  res.status(200).json({
+  res.status(201).json({
     message: 'user logged in successfully',
     user: { firstname: user.firstname },
   });

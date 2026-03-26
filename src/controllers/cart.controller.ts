@@ -28,33 +28,34 @@ export const addtocart = async (req: Request, res: Response) => {
     if (existingcartitemserror && existingcartitemserror.code !== 'PGRST116') {
       return res.status(500).json({
         message: 'Error checking existing cart items',
-        existingcartitemserror,
       });
     }
 
     if (existingcartitems) {
-      const updatedQuantity =
-        parseInt(existingcartitems.quantity) + parseInt(quantity);
+      const updatedQuantity = parseInt(existingcartitems.quantity) + 1;
       const updatedPrice = (
         parseInt(unitprice.replace(/,/g, '')) * updatedQuantity
       ).toLocaleString('en-US');
+
       const { data: updatedCartItem, error: updateCartItemError } =
         await supabase
           .from('cart_items')
           .update({ quantity: updatedQuantity, price: updatedPrice })
+          .select('id,quantity, price')
           .eq('id', existingcartitems.id)
-          .select()
           .single();
+
       if (updateCartItemError || !updatedCartItem) {
         return res.status(500).json({
           message: 'Error updating cart item quantity',
-          updateCartItemError,
         });
       }
-      console.log('Cart item quantity updated:', updatedCartItem);
+
+      console.log(updateCartItemError);
+
       return res.status(200).json({
         message: 'Cart item quantity updated successfully',
-        cartItem: updatedCartItem,
+        updatedCartItem,
       });
     }
 
@@ -70,12 +71,13 @@ export const addtocart = async (req: Request, res: Response) => {
         size,
         unitprice,
       })
-      .select()
+      .select(`id,product_id(name,slug,image), quantity, price, size`)
       .single();
+
+    console.log('working');
+    console.log(cartitemerror);
     if (cartitemerror || !cartitem) {
-      return res
-        .status(500)
-        .json({ message: 'Error adding item to cart', cartitemerror });
+      return res.status(500).json({ message: 'Error adding item to cart' });
     }
 
     return res
@@ -88,13 +90,15 @@ export const addtocart = async (req: Request, res: Response) => {
     .insert({
       user_id: userid,
     })
-    .select()
+    .select('id')
     .single();
+
   if (newcarterror || !newcart) {
     return res
       .status(500)
-      .json({ message: 'Error creating new cart', newcarterror });
+      .json({ message: 'Error creating new cart', newcart });
   }
+  console.log(newcarterror);
 
   const { data: cartitem, error: cartitemerror } = await supabase
     .from('cart_items')
@@ -108,13 +112,13 @@ export const addtocart = async (req: Request, res: Response) => {
       size,
       unitprice,
     })
-    .select()
+    .select(`id,product_id(name,slug,image), quantity, price, size`)
     .single();
+
   if (cartitemerror || !cartitem) {
-    return res
-      .status(500)
-      .json({ message: 'Error adding item to cart', cartitemerror });
+    return res.status(500).json({ message: 'Error adding item to cart' });
   }
+  console.log(cartitemerror);
 
   return res
     .status(200)
@@ -122,14 +126,31 @@ export const addtocart = async (req: Request, res: Response) => {
 };
 
 export const updatecartquantity = async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
   const { cartitemid, quantity } = req.body;
 
   const { data: existingcartitem, error: existingcartitemerror } =
     await supabase.from('cart_items').select().eq('id', cartitemid).single();
+
   if (existingcartitemerror || !existingcartitem) {
-    return res
-      .status(404)
-      .json({ message: 'Cart item not found', existingcartitemerror });
+    return res.status(404).json({ message: 'Cart item not found' });
+  }
+
+  const { data: cart, error: carterror } = await supabase
+    .from('carts')
+    .select('user_id')
+    .eq('id', existingcartitem.cart_id)
+    .single();
+
+  if (carterror || !cart) {
+    return res.status(404).json({ message: 'Cart not found' });
+  }
+
+  if (cart.user_id !== req.user.id) {
+    return res.status(403).json({ message: 'Forbidden' });
   }
 
   const { data: updatedcartitem, error: updatecartitemerror } = await supabase
@@ -141,46 +162,60 @@ export const updatecartquantity = async (req: Request, res: Response) => {
       ).toLocaleString('en-US'),
     })
     .eq('id', cartitemid)
-    .select()
+    .select('id,quantity, price')
     .single();
   if (updatecartitemerror || !updatedcartitem) {
     return res.status(500).json({
       message: 'Error updating cart item quantity',
-      updatecartitemerror,
     });
   }
-  console.log('Cart item quantity updated successfully:', updatedcartitem);
+
   return res.status(200).json({
     message: 'quantity updated successfully',
-    cartitem: updatedcartitem,
+    updatedcartitem,
   });
 };
 
 export const deletecartitem = async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
   const cartitemid = req.body.cartitemid;
   const { data: existingcartitem, error: existingcartitemerror } =
     await supabase.from('cart_items').select().eq('id', cartitemid).single();
+
   if (existingcartitemerror || !existingcartitem) {
-    return res
-      .status(404)
-      .json({ message: 'Cart item not found', existingcartitemerror });
+    return res.status(404).json({ message: 'Cart item not found' });
   }
 
-  const { data: deletedcartitem, error: deletedcrtitemerror } = await supabase
+  const { data: cart, error: carterror } = await supabase
+    .from('carts')
+    .select()
+    .eq('user_id', req.user.id)
+    .single();
+
+  if (carterror || !cart) {
+    return res.status(404).json({ message: 'Cart not found' });
+  }
+
+  if (cart.user_id !== req.user.id) {
+    return res.status(403).json({ message: 'Forbidden' });
+  }
+
+  const { data: deletedcartitem, error: deletedcartitemerror } = await supabase
     .from('cart_items')
     .delete()
     .eq('id', cartitemid)
+    .eq('cart_id', existingcartitem.cart_id)
     .select()
     .single();
-  if (deletedcrtitemerror || !deletedcartitem) {
-    return res
-      .status(500)
-      .json({ message: 'Error deleting cart item', deletedcrtitemerror });
+
+  if (deletedcartitemerror || !deletedcartitem) {
+    return res.status(500).json({ message: 'Error deleting cart item' });
   }
-  console.log('Cart item deleted successfully:', deletedcartitem);
+
   return res.status(200).json({
     message: 'Cart item deleted successfully',
-    cartitem: deletedcartitem,
   });
 };
 
@@ -195,18 +230,14 @@ export const getcart = async (req: Request, res: Response) => {
     .eq('user_id', userid)
     .single();
   if (existingcarterror || !existingcart) {
-    return res
-      .status(404)
-      .json({ message: 'Cart not found', existingcarterror });
+    return res.status(404).json({ message: 'Cart not found' });
   }
   const { data: cartitems, error: cartitemserror } = await supabase
     .from('cart_items')
     .select(`*,product_id(name,slug,image,description)`)
     .eq('cart_id', existingcart.id);
   if (cartitemserror) {
-    return res
-      .status(500)
-      .json({ message: 'Error retrieving cart items', cartitemserror });
+    return res.status(500).json({ message: 'Error retrieving cart items' });
   }
   return res.status(200).json({
     message: 'Cart items retrieved successfully',

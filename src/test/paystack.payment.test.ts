@@ -20,8 +20,8 @@ describe('paystack payment routes', () => {
       .post('/api/payment/paystack/initialize')
       .send({
         email: `${process.env.TESTEMAIL}`,
-        order_id: 11,
-        total_price: '114,000',
+        order_id: 12,
+        total_price: '185,000',
       })
       .set('Cookie', `accessToken=${accesstoken}`);
     expect(response.status).toBe(200);

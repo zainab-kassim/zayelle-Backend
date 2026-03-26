@@ -21,13 +21,13 @@ describe('Order Routes', () => {
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
         cart_id: 7,
-        total_price: '114,000',
-        street_address: '12 baycrest St',
-        apt_no: 'Apt 5n',
+        total_price: '185,000',
+        street_address: '18 baycrest St',
+        apt_no: 'Apt 5k',
         phone_number: '565-9899',
-        city: 'Lekki',
-        state: 'Lagos',
-        postal_code: 'K1V 9K8',
+        city: 'Imota',
+        state: 'Ikorodu',
+        postal_code: 'K8V 8K8',
         country: 'Nigeria',
       });
     expect(response.status).toBe(200);
@@ -49,9 +49,9 @@ describe('Order Routes', () => {
       .post('/api/order/edit-shipping-info')
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
-        order_id: 10,
-        street_address: '31 popoola street',
-        apt_no: 'Apt 5D',
+        order_id: 12,
+        street_address: '31 akanbi street',
+        apt_no: 'Apt 5L',
       });
     expect(response.status).toBe(200);
   });

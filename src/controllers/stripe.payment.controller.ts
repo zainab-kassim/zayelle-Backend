@@ -20,28 +20,30 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
     metadata: { order_id },
   });
 
-  const { data: updatedOrder, error: updatedOrderError } = await supabase
+  const { error: updatedOrderError } = await supabase
     .from('order')
     .update({ paymentIntent_id: paymentIntent.id, currency, local_amount })
     .eq('id', order_id)
+    .eq('user_id', req.user.id)
     .single();
 
   if (updatedOrderError) {
     return res.status(500).json({
-      message: 'Error updating order with payment intent ID',
-      updatedOrderError,
+      message: 'Error updating order',
     });
   }
 
   return res.status(200).json({
-    message: 'Payment initiated successfully',
+    message: 'Payment made successfully',
     client_secret: paymentIntent.client_secret,
     paymentIntent_id: paymentIntent.id,
-    updatedOrder,
   });
 };
 
 export const verifyStripePayment = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
   const paymentIntent_id = req.params.paymentIntent_id as string;
 
   const verifyPayment = await stripe.paymentIntents.retrieve(paymentIntent_id);
@@ -52,13 +54,13 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         .from('order')
         .update({ status: ['success'] })
         .eq('payment_intent_id', paymentIntent_id)
+        .eq('user_id', req.user.id)
         .select()
         .single();
 
     if (updatedorderstatusError) {
       return res.status(500).json({
-        message: 'Error updating order status',
-        updatedorderstatusError,
+        message: 'payment not successful',
       });
     }
     const cart_id = updatedorderstatus.cart_id;

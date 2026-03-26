@@ -1,2 +1,4 @@
 
 npx lint-staged
+
+npm test -- order.test.ts paystack.payment.test.ts

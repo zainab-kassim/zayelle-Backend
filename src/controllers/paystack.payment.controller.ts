@@ -27,30 +27,27 @@ export const initializePayment = async (req: Request, res: Response) => {
     },
   );
 
-  const { data: updated_order, error: updated_order_error } = await supabase
+  const { error: updated_order_error } = await supabase
     .from('order')
     .update({ reference })
     .eq('id', order_id)
+    .eq('user_id', req.user.id)
     .single();
 
   if (updated_order_error) {
-    return res
-      .status(500)
-      .json({ message: 'Error updating order with reference' });
+    return res.status(500).json({ message: 'Error updating order' });
   }
-  console.log('Updated order with reference:');
 
   return res.status(200).json({
     message: 'Payment initialized successfully',
     auth_url: response.data.data.authorization_url,
     reference,
-    updated_order,
   });
 };
 
 export const verifyPayment = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'User not authenticated' });
+    return res.status(401).json({ message: 'User not found' });
   }
 
   const { reference } = req.params;
@@ -71,12 +68,12 @@ export const verifyPayment = async (req: Request, res: Response) => {
         .from('order')
         .update({ status: ['success'] })
         .eq('reference', reference)
-        .select()
+        .eq('user_id', req.user.id)
+        .select(`id,cart_id`)
         .single();
     if (updatedorderstatuserror) {
       return res.status(500).json({
         message: 'Error updating order status',
-        updatedorderstatuserror,
       });
     }
 

@@ -20,13 +20,13 @@ export const createorder = async (req: Request, res: Response) => {
 
   const { data: existingcart, error: existingcarterror } = await supabase
     .from('carts')
-    .select(``)
-    .eq('id', cart_id)
+    .select('id')
+    .eq('user_id', user_id)
     .single();
+
+  console.log(existingcarterror);
   if (existingcarterror || !existingcart) {
-    return res
-      .status(404)
-      .json({ message: 'Cart not found', existingcarterror });
+    return res.status(404).json({ message: 'Cart not found' });
   }
 
   const { data: neworder, error: newordererror } = await supabase
@@ -44,12 +44,14 @@ export const createorder = async (req: Request, res: Response) => {
       postal_code,
       country,
     })
-    .select()
+    .select(
+      `id,user_id(id,firstname,email),cart_id,total_price,status,phone_number,street_address,apt_no,city,state,postal_code,country`,
+    )
     .single();
+
+  console.log(newordererror);
   if (newordererror || !neworder) {
-    return res
-      .status(500)
-      .json({ message: 'Error creating order', newordererror });
+    return res.status(500).json({ message: 'Error creating order' });
   }
 
   return res
@@ -59,7 +61,7 @@ export const createorder = async (req: Request, res: Response) => {
 
 export const getorderhistory = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'User not authenticated' });
+    return res.status(401).json({ message: 'Unauthorized' });
   }
   const user_id = req.user.id;
 
@@ -70,9 +72,7 @@ export const getorderhistory = async (req: Request, res: Response) => {
     .contains('status', ['success']);
 
   if (error) {
-    return res
-      .status(500)
-      .json({ message: 'Error fetching order history', error });
+    return res.status(500).json({ message: 'Error fetching order history' });
   }
 
   return res
@@ -107,13 +107,12 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
       country,
     })
     .eq('id', order_id)
-    .select()
+    .eq('user_id', req.user.id)
+    .select('street_address,apt_no,phone_number,city,state,postal_code,country')
     .single();
 
   if (updatedordererror) {
-    return res
-      .status(500)
-      .json({ message: 'Error updating shipping info', updatedordererror });
+    return res.status(500).json({ message: 'Error updating shipping info' });
   }
 
   return res.json({
