@@ -24,7 +24,6 @@ export const createorder = async (req: Request, res: Response) => {
     .eq('user_id', user_id)
     .single();
 
-  console.log(existingcarterror);
   if (existingcarterror || !existingcart) {
     return res.status(404).json({ message: 'Cart not found' });
   }
@@ -49,7 +48,6 @@ export const createorder = async (req: Request, res: Response) => {
     )
     .single();
 
-  console.log(newordererror);
   if (newordererror || !neworder) {
     return res.status(500).json({ message: 'Error creating order' });
   }

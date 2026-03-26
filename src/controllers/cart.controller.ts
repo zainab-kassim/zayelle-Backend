@@ -51,8 +51,6 @@ export const addtocart = async (req: Request, res: Response) => {
         });
       }
 
-      console.log(updateCartItemError);
-
       return res.status(200).json({
         message: 'Cart item quantity updated successfully',
         updatedCartItem,
@@ -74,8 +72,6 @@ export const addtocart = async (req: Request, res: Response) => {
       .select(`id,product_id(name,slug,image), quantity, price, size`)
       .single();
 
-    console.log('working');
-    console.log(cartitemerror);
     if (cartitemerror || !cartitem) {
       return res.status(500).json({ message: 'Error adding item to cart' });
     }
@@ -98,7 +94,6 @@ export const addtocart = async (req: Request, res: Response) => {
       .status(500)
       .json({ message: 'Error creating new cart', newcart });
   }
-  console.log(newcarterror);
 
   const { data: cartitem, error: cartitemerror } = await supabase
     .from('cart_items')
@@ -118,7 +113,6 @@ export const addtocart = async (req: Request, res: Response) => {
   if (cartitemerror || !cartitem) {
     return res.status(500).json({ message: 'Error adding item to cart' });
   }
-  console.log(cartitemerror);
 
   return res
     .status(200)
