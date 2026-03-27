@@ -2,7 +2,6 @@ import z from 'zod';
 
 export const createOrderSchema = z.object({
   cart_id: z.number().positive(),
-  total_price: z.string(),
   street_address: z.string(),
   apt_no: z.string().optional(),
   phone_number: z.string(),

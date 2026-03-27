@@ -1,14 +1,18 @@
 import { supabase } from '../config/db';
 import { Request, Response } from 'express';
+import { getCachedRates } from '../utils/getCachedRates';
 
 export const createorder = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'User not authenticated' });
   }
   const user_id = req.user.id;
+  const currency = req.currency;
+  const rates = await getCachedRates();
+  const rate = rates[currency || 'USD'];
+
   const {
     cart_id,
-    total_price,
     street_address,
     apt_no,
     phone_number,
@@ -20,13 +24,18 @@ export const createorder = async (req: Request, res: Response) => {
 
   const { data: existingcart, error: existingcarterror } = await supabase
     .from('carts')
-    .select('id')
+    .select('id,cart_items(price)')
     .eq('user_id', user_id)
+    .eq('id', cart_id)
     .single();
 
   if (existingcarterror || !existingcart) {
     return res.status(404).json({ message: 'Cart not found' });
   }
+  const total_price = existingcart.cart_items.reduce(
+    (sum, item) => sum + item.price,
+    0,
+  );
 
   const { data: neworder, error: newordererror } = await supabase
     .from('order')
@@ -42,9 +51,12 @@ export const createorder = async (req: Request, res: Response) => {
       state,
       postal_code,
       country,
+      totalLocal: Math.round(total_price * rate),
+      rate,
+      currency,
     })
     .select(
-      `id,user_id(id,firstname,email),cart_id,total_price,status,phone_number,street_address,apt_no,city,state,postal_code,country`,
+      `id,user_id(id,firstname,email),cart_id,total_price,status,phone_number,street_address,apt_no,city,state,postal_code,country,totalLocal`,
     )
     .single();
 
@@ -117,4 +129,25 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     message: 'Shipping info updated successfully',
     order: updatedorder,
   });
+};
+
+export const getOrder = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const { order_id } = req.params;
+
+  const { data: order, error } = await supabase
+    .from('order')
+    .select(`*, order_items(*, product_id(name, slug, image, description))`)
+    .eq('id', order_id)
+    .eq('user_id', req.user.id)
+    .single();
+
+  if (error || !order) {
+    return res.status(404).json({ message: 'Order not found' });
+  }
+
+  return res.status(200).json({ order });
 };

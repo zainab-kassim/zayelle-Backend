@@ -20,8 +20,7 @@ describe('Order Routes', () => {
       .post('/api/order')
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
-        cart_id: 7,
-        total_price: '185,000',
+        cart_id: 6,
         street_address: '18 baycrest St',
         apt_no: 'Apt 5k',
         phone_number: '565-9899',
@@ -49,7 +48,7 @@ describe('Order Routes', () => {
       .post('/api/order/edit-shipping-info')
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
-        order_id: 12,
+        order_id: 13,
         street_address: '31 akanbi street',
         apt_no: 'Apt 5L',
       });

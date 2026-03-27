@@ -11,18 +11,27 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const { local_amount, currency, order_id } = req.body;
-  const converted_price = parseInt(local_amount.replace(/,/g, '')) * 100;
+  const { order_id } = req.body;
+  const { data: order, error: orderError } = await supabase
+    .from('order')
+    .select('totalLocal,currency')
+    .eq('id', order_id)
+    .single();
+  const converted_price = order?.totalLocal * 100;
+
+  if (orderError || !order) {
+    return res.status(404).json({ message: 'Order not found' });
+  }
 
   const paymentIntent = await stripe.paymentIntents.create({
     amount: converted_price,
-    currency: currency,
+    currency: order.currency.toLowerCase(),
     metadata: { order_id },
   });
 
   const { error: updatedOrderError } = await supabase
     .from('order')
-    .update({ paymentIntent_id: paymentIntent.id, currency, local_amount })
+    .update({ paymentIntent_id: paymentIntent.id })
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .single();
@@ -53,7 +62,7 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
       await supabase
         .from('order')
         .update({ status: ['success'] })
-        .eq('payment_intent_id', paymentIntent_id)
+        .eq('paymentIntent_id', paymentIntent_id)
         .eq('user_id', req.user.id)
         .select()
         .single();

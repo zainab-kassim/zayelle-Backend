@@ -22,7 +22,6 @@ describe('Cart Routes', () => {
         productid: 4,
         quantity: 1,
         size: 'M',
-        unitprice: '38,000',
       })
       .set('Cookie', `accessToken=${accesstoken}`);
     expect(response.status).toBe(200);
@@ -35,7 +34,7 @@ describe('Cart Routes', () => {
       .put('/api/cart/updatequantity')
       .send({
         cartitemid: 46,
-        quantity: 3,
+        quantity: 2,
       })
       .set('Cookie', `accessToken=${accesstoken}`);
     expect(response.status).toBe(200);

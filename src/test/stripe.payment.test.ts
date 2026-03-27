@@ -10,7 +10,6 @@ beforeAll(async () => {
   const response = await request(app)
     .post('/api/auth/token')
     .set('Cookie', `refreshToken=${process.env.TEST_REFRESH_TOKEN}`);
-
   accesstoken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
 });
 
@@ -20,8 +19,6 @@ describe('stripe payment routes', () => {
       .post('/api/payment/stripe/create-payment-intent')
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
-        total_price: '136,000',
-        currency: 'cad',
         order_id: 8,
       });
     expect(response.status).toBe(200);
