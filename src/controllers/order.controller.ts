@@ -51,9 +51,9 @@ export const createorder = async (req: Request, res: Response) => {
       state,
       postal_code,
       country,
-      totalLocal: Math.round(total_price * rate),
+      totalLocal: total_price * rate,
       rate,
-      currency,
+      currency: req.currency,
     })
     .select(
       `id,user_id(id,firstname,email),cart_id,total_price,status,phone_number,street_address,apt_no,city,state,postal_code,country,totalLocal`,
@@ -94,6 +94,7 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
+
   const {
     order_id,
     street_address,

@@ -15,10 +15,13 @@ export const currencyMiddleware = async (
   }
 
   try {
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    const geo = await fetch(`https://ipapi.co/${ip}/json/`);
-    const { currency } = await geo.json();
-    req.currency = currency || 'USD'; // fallback
+    const ip =
+      process.env.NODE_ENV !== 'production'
+        ? '24.48.0.1' // temp Canadian IP for testing
+        : req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const geo = await fetch(`https://free.freeipapi.com/api/json/${ip}`);
+    const data = await geo.json();
+    req.currency = data.currencies?.[0] || 'USD';
   } catch (_error) {
     req.currency = 'USD'; // fallback if API fails
   }

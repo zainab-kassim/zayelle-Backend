@@ -21,13 +21,13 @@ describe('Order Routes', () => {
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
         cart_id: 6,
-        street_address: '18 baycrest St',
-        apt_no: 'Apt 5k',
-        phone_number: '565-9899',
-        city: 'Imota',
-        state: 'Ikorodu',
-        postal_code: 'K8V 8K8',
-        country: 'Nigeria',
+        street_address: '18 Edmonton',
+        apt_no: 'Apt 5H',
+        phone_number: '99765222',
+        city: 'Calgary',
+        state: 'ON',
+        postal_code: 'K1C VK8',
+        country: 'Canada',
       });
     expect(response.status).toBe(200);
   });
@@ -48,9 +48,8 @@ describe('Order Routes', () => {
       .post('/api/order/edit-shipping-info')
       .set('Cookie', `accessToken=${accesstoken}`)
       .send({
-        order_id: 13,
-        street_address: '31 akanbi street',
-        apt_no: 'Apt 5L',
+        order_id: 18,
+        apt_no: 'Apt 501',
       });
     expect(response.status).toBe(200);
   });

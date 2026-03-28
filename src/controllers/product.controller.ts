@@ -16,7 +16,7 @@ export const GetProducts = async (req: Request, res: Response) => {
   }
   const convertedProducts = products.map((product) => ({
     ...product,
-    price: Math.round(product.price * rate),
+    price: product.price * rate,
   }));
 
   res
@@ -50,7 +50,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   }
   const convertedProductCollection = CollectionProducts.map((collection) => ({
     ...collection,
-    price: Math.round(collection.price * rate),
+    price: collection.price * rate,
   }));
 
   res.status(200).json({
@@ -75,7 +75,7 @@ export const GetProductByName = async (req: Request, res: Response) => {
 
   const convertedProduct = product.map((product) => ({
     ...product,
-    price: Math.round(product.price * rate),
+    price: product.price * rate,
   }));
 
   res.status(200).json({

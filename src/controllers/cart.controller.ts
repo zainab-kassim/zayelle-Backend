@@ -149,9 +149,9 @@ export const updatecartquantity = async (req: Request, res: Response) => {
   const { data: existingCartItem, error: existingCartItemError } =
     await supabase
       .from('cart_items')
-      .select('id, unitprice, cart!inner(user_id)')
+      .select('id, unitprice, carts!inner(user_id)')
       .eq('id', cartitemid)
-      .eq('cart.user_id', user_id)
+      .eq('carts.user_id', user_id)
       .single();
 
   if (existingCartItemError || !existingCartItem) {
@@ -242,7 +242,7 @@ export const getcart = async (req: Request, res: Response) => {
 
   const convertedItems = cartitems.map((item) => ({
     ...item,
-    price: Math.round(item.price * rate),
+    price: item.price * rate,
   }));
 
   const total_price = cartitems.reduce((sum, item) => sum + item.price, 0);
@@ -250,7 +250,7 @@ export const getcart = async (req: Request, res: Response) => {
   return res.status(200).json({
     message: 'Cart items retrieved successfully',
     cartitems: convertedItems,
-    totalLocal: Math.round(total_price * rate),
+    totalLocal: total_price * rate,
     total_price,
     currency,
     firstname: existingcart.user_id.firstname,

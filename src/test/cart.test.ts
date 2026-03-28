@@ -19,7 +19,7 @@ describe('Cart Routes', () => {
     const response = await request(app)
       .post('/api/cart/addtocart')
       .send({
-        productid: 4,
+        productid: 3,
         quantity: 1,
         size: 'M',
       })
@@ -33,8 +33,8 @@ describe('Cart Routes', () => {
     const response = await request(app)
       .put('/api/cart/updatequantity')
       .send({
-        cartitemid: 46,
-        quantity: 2,
+        cartitemid: 52,
+        quantity: 1,
       })
       .set('Cookie', `accessToken=${accesstoken}`);
     expect(response.status).toBe(200);
