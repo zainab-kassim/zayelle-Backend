@@ -16,6 +16,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
     .from('order')
     .select('totalLocal,currency')
     .eq('id', order_id)
+    .eq('user_id', req.user.id)
     .single();
   const converted_price = order?.totalLocal * 100;
 

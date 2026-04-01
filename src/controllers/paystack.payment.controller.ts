@@ -18,6 +18,7 @@ export const initializePayment = async (req: Request, res: Response) => {
     .from('order')
     .select('totalLocal')
     .eq('id', order_id)
+    .eq('user_id', req.user.id)
     .single();
 
   if (orderError || !order) {
@@ -78,7 +79,21 @@ export const verifyPayment = async (req: Request, res: Response) => {
     },
   );
 
-  if (response.data.data.status === 'success') {
+  const { data: order, error: orderError } = await supabase
+    .from('order')
+    .select('status')
+    .eq('reference', reference)
+    .eq('user_id', req.user.id)
+    .single();
+
+  if (orderError || !order) {
+    return res.status(404).json({ message: 'not found' });
+  }
+
+  if (
+    response.data.data.status === 'success' &&
+    order?.status[0] !== 'success'
+  ) {
     const { data: updatedorderstatus, error: updatedorderstatuserror } =
       await supabase
         .from('order')
