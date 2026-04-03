@@ -3,11 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config(); // this reads your .env
 
-if (!process.env.PROJECTURL || !process.env.APIKEY) {
+if (!process.env.PROJECTURL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('Supabase env variables missing');
 }
 
-export const supabase = createClient(
+export const supabaseAdmin = createClient(
   process.env.PROJECTURL,
-  process.env.APIKEY, //anon key
+  process.env.SUPABASE_SERVICE_ROLE_KEY, // service role key
 );

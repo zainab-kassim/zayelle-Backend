@@ -9,6 +9,7 @@ import { Router } from 'express';
 import { userSignupSchema } from '../schemas/user.signup.schema';
 import { userLoginSchema } from '../schemas/user.login.schema';
 import { validateUser } from '../middleware/validate';
+import { isLoggedIn } from '../middleware/isLoggedIn';
 
 const router = Router();
 router.post(
@@ -17,7 +18,7 @@ router.post(
   handleAsyncErr(UserSignup),
 );
 router.post('/login', validateUser(userLoginSchema), handleAsyncErr(UserLogin));
-router.post('/logout', handleAsyncErr(UserLogout));
+router.post('/logout', isLoggedIn, handleAsyncErr(UserLogout));
 
 //Refresh Token
 router.post('/token', handleAsyncErr(refreshToken));

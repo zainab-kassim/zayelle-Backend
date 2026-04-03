@@ -10,6 +10,8 @@ import {
 import { supabase } from '../config/db';
 import { RefreshSecretKey } from '../auth/config';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
+import { supabaseAdmin } from '../config/supabaseAdmin';
+import crypto from 'crypto';
 
 export const UserSignup = async (req: Request, res: Response) => {
   const { firstName, lastName, email, phoneNumber, password } = req.body;
@@ -23,7 +25,7 @@ export const UserSignup = async (req: Request, res: Response) => {
   if (existingUser) {
     return res.status(200).json({
       message:
-        'If this email is not registered, you will receive a confirmation shortly.',
+        'An account with this email already exists. Please log in instead.',
     });
   }
 
@@ -54,9 +56,26 @@ export const UserSignup = async (req: Request, res: Response) => {
     id: newUser.id,
   });
 
+  const hashedRefreshToken = crypto
+    .createHash('sha256')
+    .update(refreshToken)
+    .digest('hex');
+
+  const { data: _session, error: sessionError } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      user_id: newUser.id,
+      refresh_token: hashedRefreshToken,
+    });
+
+  if (sessionError) {
+    console.error('Session delete error:', sessionError);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
-  res.status(200).json({
+  res.status(201).json({
     message: 'user signed up successfully',
     user: { firstname: newUser.firstname },
   });
@@ -71,9 +90,12 @@ export const UserLogin = async (req: Request, res: Response) => {
     .eq('email', email)
     .single();
 
-  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!user || error) {
+    return res.status(401).json({ message: 'Invalid email or password' });
+  }
 
-  if (!user || !isPasswordValid || error) {
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
@@ -83,16 +105,77 @@ export const UserLogin = async (req: Request, res: Response) => {
   SetAccessTokenCookieOptions(res, accessToken);
   SetRefreshTokenCookieOptions(res, refreshToken);
 
-  res.status(201).json({
+  const hashedRefreshToken = crypto
+    .createHash('sha256')
+    .update(refreshToken)
+    .digest('hex');
+
+  const { data: existingSession, error: existingSessionError } =
+    await supabaseAdmin
+      .from('sessions')
+      .select()
+      .eq('user_id', user.id)
+      .single();
+
+  if (existingSessionError && existingSessionError.code !== 'PGRST116') {
+    console.error('Error checking existing session:', existingSessionError);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+
+  if (existingSession) {
+    const { data: _session, error: sessionError } = await supabaseAdmin
+      .from('sessions')
+      .update({
+        refresh_token: hashedRefreshToken,
+      })
+      .eq('user_id', user.id);
+
+    if (sessionError) {
+      console.error('Session insert error:', sessionError);
+      return res.status(500).json({ message: 'Something went wrong' });
+    }
+
+    return res.status(200).json({
+      message: 'user logged in successfully',
+      user: { firstname: user.firstname },
+    });
+  }
+
+  const { data: _session, error: sessionError } = await supabaseAdmin
+    .from('sessions')
+    .insert({
+      user_id: user.id,
+      refresh_token: hashedRefreshToken,
+    });
+
+  if (sessionError) {
+    console.error('Session insert error:', sessionError);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+
+  res.status(200).json({
     message: 'user logged in successfully',
     user: { firstname: user.firstname },
   });
 };
 
 export const UserLogout = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  const { data: _session, error: sessionError } = await supabaseAdmin
+    .from('sessions')
+    .delete()
+    .eq('user_id', req.user.id);
+
+  if (sessionError) {
+    console.error('Session delete error:', sessionError);
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
   RemoveAccessTokenCookieOptions(res);
   RemoveRefreshTokenCookieOptions(res);
-  res.status(200).json({ message: 'user logged out successfully' });
+
+  return res.status(200).json({ message: 'user logged out successfully' });
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
@@ -115,16 +198,60 @@ export const refreshToken = async (req: Request, res: Response) => {
   jwt.verify(
     refreshToken,
     RefreshSecretKey,
-    (err: VerifyErrors | null, user: JwtPayload | string | undefined) => {
+    async (err: VerifyErrors | null, user: JwtPayload | string | undefined) => {
       if (err)
         return res
           .status(403)
           .json({ message: 'Session timed out. Please log in again.' });
       const payload = user as JwtPayload;
+
+      const hashedIncomingToken = crypto
+        .createHash('sha256')
+        .update(req.cookies.refreshToken)
+        .digest('hex');
+
+      const { data: existingsession, error: existingsessionError } =
+        await supabaseAdmin
+          .from('sessions')
+          .select()
+          .eq('user_id', payload.id)
+          .eq('refresh_token', hashedIncomingToken)
+          .single();
+
+      if (existingsessionError || !existingsession) {
+        // token not in DB - could be stolen/reused
+        return res
+          .status(403)
+          .json({ message: 'Session timed out. Please log in again.' });
+      }
+
       const accessToken = GenerateAccessToken({
         email: payload.email,
         id: payload.id,
       });
+
+      const newrefreshToken = GenerateRefreshToken({
+        email: payload.email,
+        id: payload.id,
+      });
+
+      const hashedRefreshToken = crypto
+        .createHash('sha256')
+        .update(newrefreshToken)
+        .digest('hex');
+
+      const { data: _session, error: sessionError } = await supabaseAdmin
+        .from('sessions')
+        .update({ refresh_token: hashedRefreshToken })
+        .eq('user_id', payload.id);
+
+      if (sessionError) {
+        console.error('Error fetching session:', sessionError);
+        return res.status(500).json({ message: 'Something went wrong' });
+      }
+
+      // Set the new refresh token in the cookies
+      SetRefreshTokenCookieOptions(res, newrefreshToken);
 
       // Set the new access token in the cookies
       SetAccessTokenCookieOptions(res, accessToken);
