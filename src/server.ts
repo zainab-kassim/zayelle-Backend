@@ -57,7 +57,7 @@ app.use('/api/payment/stripe', stripePaymentRoutes);
 //To handle errors
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
-  res.status(500).json({ message: err.message || 'Something went wrong' });
+  res.status(500).json({ message: 'Something went wrong' });
 });
 
 // Start the server

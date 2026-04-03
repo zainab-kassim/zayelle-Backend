@@ -1,5 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 
+const SUPPORTED_CURRENCIES = ['USD', 'GBP', 'CAD', 'NGN'];
+
+const DEFAULT_CURRENCY = 'USD';
+
 export const currencyMiddleware = async (
   req: Request,
   res: Response,
@@ -10,7 +14,10 @@ export const currencyMiddleware = async (
     : req.headers['x-currency'];
 
   if (manualCurrency) {
-    req.currency = manualCurrency;
+    const normalizedCurrency = manualCurrency.trim().toUpperCase();
+    req.currency = SUPPORTED_CURRENCIES.includes(normalizedCurrency)
+      ? normalizedCurrency
+      : DEFAULT_CURRENCY;
     return next();
   }
 
@@ -21,7 +28,11 @@ export const currencyMiddleware = async (
         : req.headers['x-forwarded-for'] || req.socket.remoteAddress;
     const geo = await fetch(`https://free.freeipapi.com/api/json/${ip}`);
     const data = await geo.json();
-    req.currency = data.currencies?.[0] || 'USD';
+
+    const currencyfromIp = data.currencies?.[0]?.toUpperCase();
+    req.currency = SUPPORTED_CURRENCIES.includes(currencyfromIp)
+      ? currencyfromIp
+      : DEFAULT_CURRENCY;
   } catch (_error) {
     req.currency = 'USD'; // fallback if API fails
   }
