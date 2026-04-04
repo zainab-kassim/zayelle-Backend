@@ -65,12 +65,13 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         .update({ status: ['success'] })
         .eq('paymentIntent_id', paymentIntent_id)
         .eq('user_id', req.user.id)
+        .eq('status', ['pending'])
         .select()
         .single();
 
-    if (updatedorderstatusError) {
-      return res.status(500).json({
-        message: 'payment not successful',
+    if (updatedorderstatusError || !updatedorderstatus) {
+      return res.status(200).json({
+        message: 'payment already processed',
       });
     }
     const cart_id = updatedorderstatus.cart_id;

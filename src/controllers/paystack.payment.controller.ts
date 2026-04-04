@@ -100,18 +100,15 @@ export const verifyPayment = async (req: Request, res: Response) => {
         .update({ status: ['success'] })
         .eq('reference', reference)
         .eq('user_id', req.user.id)
+        .eq('status', ['pending'])
         .select(`id,cart_id`)
         .single();
-    if (updatedorderstatuserror) {
-      return res.status(500).json({
-        message: 'Error updating order status',
-      });
+
+    if (updatedorderstatuserror || !updatedorderstatus) {
+      return res.status(200).json({ message: 'Payment already processed' });
     }
 
-    const cart_id = updatedorderstatus.cart_id;
-    const order_id = updatedorderstatus.id;
-
-    await handlePostPayment(order_id, cart_id);
+    await handlePostPayment(updatedorderstatus.id, updatedorderstatus.cart_id);
 
     return res.status(200).json({
       message: 'Payment successful',

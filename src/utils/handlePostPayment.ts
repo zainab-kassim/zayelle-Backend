@@ -22,7 +22,10 @@ export const handlePostPayment = async (order_id: number, cart_id: number) => {
 
   const { error: orderItemsError } = await supabase
     .from('order_items')
-    .insert(itemsToInsert);
+    .upsert(itemsToInsert, {
+      onConflict: 'order_id,product_id', // needs a unique constraint on these two columns
+      ignoreDuplicates: true,
+    });
 
   if (orderItemsError) throw new Error('Error creating order items');
 
