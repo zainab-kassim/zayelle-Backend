@@ -24,8 +24,7 @@ export const UserSignup = async (req: Request, res: Response) => {
 
   if (existingUser) {
     return res.status(200).json({
-      message:
-        'An account with this email already exists. Please log in instead.',
+      message: 'Account already exists. Please log in instead.',
     });
   }
 
@@ -219,10 +218,14 @@ export const refreshToken = async (req: Request, res: Response) => {
           .single();
 
       if (existingsessionError || !existingsession) {
+        const { data: _session } = await supabaseAdmin
+          .from('sessions')
+          .delete()
+          .eq('user_id', payload.id);
+
         // token not in DB - could be stolen/reused
         return res.status(403).json({
-          message: 'Session timed out. Please log in again. not found',
-          existingsessionError,
+          message: 'Invalid, Please log in again',
         });
       }
 

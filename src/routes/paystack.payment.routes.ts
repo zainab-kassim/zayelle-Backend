@@ -2,7 +2,6 @@ import {
   initializePayment,
   verifyPayment,
 } from '../controllers/paystack.payment.controller';
-import { paystackWebhook } from '../controllers/webhooks/paystack';
 import { Router } from 'express';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { isLoggedIn } from '../middleware/isLoggedIn';
@@ -18,6 +17,5 @@ router.post(
   handleAsyncErr(initializePayment),
 );
 router.get('/verify/:reference', isLoggedIn, handleAsyncErr(verifyPayment));
-router.post('/webhook/paystack', isLoggedIn, handleAsyncErr(paystackWebhook));
 
 export default router;

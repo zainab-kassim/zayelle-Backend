@@ -13,21 +13,44 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
   const { order_id } = req.body;
   const { data: order, error: orderError } = await supabase
     .from('order')
-    .select('totalLocal,currency')
+    .select('totalLocal,currency,paymentIntent_id')
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .single();
+
   const converted_price = order?.totalLocal * 100;
 
   if (orderError || !order) {
     return res.status(404).json({ message: 'Order not found' });
   }
 
-  const paymentIntent = await stripe.paymentIntents.create({
-    amount: converted_price,
-    currency: order.currency.toLowerCase(),
-    metadata: { order_id },
-  });
+  if (order.paymentIntent_id) {
+    const existingIntent = await stripe.paymentIntents.retrieve(
+      order.paymentIntent_id,
+    );
+
+    if (
+      existingIntent.status === 'requires_payment_method' ||
+      existingIntent.status === 'requires_confirmation'
+    ) {
+      return res.json({ clientSecret: existingIntent.client_secret });
+    }
+
+    if (existingIntent.status === 'succeeded') {
+      return res.status(400).json({ message: 'Payment already succeeded' });
+    }
+  }
+
+  const paymentIntent = await stripe.paymentIntents.create(
+    {
+      amount: converted_price,
+      currency: order.currency.toLowerCase(),
+      metadata: { order_id },
+    },
+    {
+      idempotencyKey: `order_${order_id}`,
+    },
+  );
 
   const { error: updatedOrderError } = await supabase
     .from('order')
@@ -43,7 +66,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
   }
 
   return res.status(200).json({
-    message: 'Payment made successfully',
+    message: 'Payment initialized successfully',
     client_secret: paymentIntent.client_secret,
     paymentIntent_id: paymentIntent.id,
   });

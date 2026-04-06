@@ -19,7 +19,7 @@ export default passport.use(
     try {
       const { data: user } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email,firstname,lastname,phonenumber')
         .eq('id', jwt_payload.id)
         .single();
 

@@ -30,7 +30,17 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Already processed' });
   }
 
-  await handlePostPayment(updatedOrder.id, updatedOrder.cart_id);
+  try {
+    await handlePostPayment(updatedOrder.id, updatedOrder.cart_id);
+  } catch (_err) {
+    // rollback the status so Stripe can safely retry
+    await supabase
+      .from('order')
+      .update({ status: ['pending'] })
+      .eq('id', updatedOrder.id);
+
+    return res.status(500).json({ message: 'Post payment failed, retrying' });
+  }
 
   return res.status(200).json({ message: 'Order confirmed' });
 };
