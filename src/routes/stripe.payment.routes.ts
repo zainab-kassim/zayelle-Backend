@@ -1,5 +1,5 @@
-import { Router } from 'express';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
+import { Router } from 'express';
 import {
   createPaymentIntent,
   verifyStripePayment,

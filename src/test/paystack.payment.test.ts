@@ -4,16 +4,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-let accesstoken: string;
-
-beforeAll(async () => {
-  const response = await request(app)
-    .post('/api/auth/token')
-    .set('Cookie', `refreshToken=${process.env.TEST_REFRESH_TOKEN}`);
-
-  accesstoken = response.headers['set-cookie'][0].split(';')[0].split('=')[1];
-});
-
 describe('paystack payment routes', () => {
   it('should initialize a paystack payment', async () => {
     const response = await request(app)
@@ -22,10 +12,9 @@ describe('paystack payment routes', () => {
         email: `${process.env.TESTEMAIL}`,
         order_id: 15,
       })
-      .set('Cookie', `accessToken=${accesstoken}`);
+      .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`);
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('auth_url');
-    console.log(response.body.auth_url);
     expect(response.body).toHaveProperty('reference');
   });
 });
@@ -34,7 +23,7 @@ describe('paystack payment routes', () => {
   it('should verify a paystack payment', async () => {
     const response = await request(app)
       .get('/api/payment/paystack/verify/ZAYELLE_15_1774653178006')
-      .set('Cookie', `accessToken=${accesstoken}`);
+      .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`);
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty('message', 'Payment successful');
   });

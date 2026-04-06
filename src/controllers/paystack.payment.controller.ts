@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { Request, Response } from 'express';
 import { supabase } from '../config/db';
-import { handlePostPayment } from '../utils/handlePostPayment';
 
 export const initializePayment = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -64,57 +63,22 @@ export const initializePayment = async (req: Request, res: Response) => {
 
 export const verifyPayment = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'User not found' });
+    return res.status(401).json({ message: 'User not authenticated' });
   }
-
   const { reference } = req.params;
 
-  const response = await axios.get(
-    `https://api.paystack.co/transaction/verify/${reference}`,
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    },
-  );
-
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error } = await supabase
     .from('order')
     .select('status')
     .eq('reference', reference)
     .eq('user_id', req.user.id)
     .single();
 
-  if (orderError || !order) {
-    return res.status(404).json({ message: 'not found' });
+  if (error || !order) {
+    return res.status(404).json({ message: 'Order not found' });
   }
 
-  if (
-    response.data.data.status === 'success' &&
-    order?.status[0] !== 'success'
-  ) {
-    const { data: updatedorderstatus, error: updatedorderstatuserror } =
-      await supabase
-        .from('order')
-        .update({ status: ['success'] })
-        .eq('reference', reference)
-        .eq('user_id', req.user.id)
-        .eq('status', ['pending'])
-        .select(`id,cart_id`)
-        .single();
-
-    if (updatedorderstatuserror || !updatedorderstatus) {
-      return res.status(200).json({ message: 'Payment already processed' });
-    }
-
-    await handlePostPayment(updatedorderstatus.id, updatedorderstatus.cart_id);
-
-    return res.status(200).json({
-      message: 'Payment successful',
-      status: response.data.data.status,
-    });
-  } else {
-    return res.status(401).json({ message: 'Payment not successful' });
-  }
+  return res
+    .status(200)
+    .json({ message: 'order successful', status: order.status });
 };

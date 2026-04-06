@@ -1,7 +1,6 @@
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { supabase } from '../config/db';
-import { handlePostPayment } from '../utils/handlePostPayment';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-02-25.clover',
@@ -56,31 +55,16 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
   }
   const paymentIntent_id = req.params.paymentIntent_id as string;
 
-  const verifyPayment = await stripe.paymentIntents.retrieve(paymentIntent_id);
+  const { data: order, error } = await supabase
+    .from('order')
+    .select('status')
+    .eq('paymentIntent_id', paymentIntent_id)
+    .eq('user_id', req.user.id)
+    .single();
 
-  if (verifyPayment.status === 'succeeded') {
-    const { data: updatedorderstatus, error: updatedorderstatusError } =
-      await supabase
-        .from('order')
-        .update({ status: ['success'] })
-        .eq('paymentIntent_id', paymentIntent_id)
-        .eq('user_id', req.user.id)
-        .eq('status', ['pending'])
-        .select()
-        .single();
-
-    if (updatedorderstatusError || !updatedorderstatus) {
-      return res.status(200).json({
-        message: 'payment already processed',
-      });
-    }
-    const cart_id = updatedorderstatus.cart_id;
-    const order_id = updatedorderstatus.id;
-
-    await handlePostPayment(order_id, cart_id);
-
-    return res.status(200).json({ message: 'Order successful' });
-  } else {
-    return res.status(400).json({ message: 'Payment not successful' });
+  if (error || !order) {
+    return res.status(404).json({ message: 'Order not found' });
   }
+
+  return res.status(200).json({ status: order.status });
 };

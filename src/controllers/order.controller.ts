@@ -1,6 +1,7 @@
 import { supabase } from '../config/db';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
+import { getRate } from '../utils/getRate';
 
 export const createorder = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -9,7 +10,7 @@ export const createorder = async (req: Request, res: Response) => {
   const user_id = req.user.id;
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
 
   const {
     cart_id,

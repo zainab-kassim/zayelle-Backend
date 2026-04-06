@@ -52,6 +52,10 @@ describe('User Routes', () => {
       .split(';')[0]
       .split('=')[1];
 
+    refreshtoken = refreshResponse.headers['set-cookie'][0]
+      .split(';')[0]
+      .split('=')[1];
+
     const { data: sessionAfter } = await supabaseAdmin
       .from('sessions')
       .select('refresh_token')

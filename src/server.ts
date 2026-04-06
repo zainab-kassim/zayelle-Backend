@@ -10,6 +10,7 @@ import orderRoutes from './routes/order.routes';
 import paystackPaymentRoutes from './routes/paystack.payment.routes';
 import stripePaymentRoutes from './routes/stripe.payment.routes';
 import { currencyMiddleware } from './middleware/currencyMiddleware';
+import webhookRoute from './routes/webhook.routes';
 
 const PORT = 4000;
 
@@ -30,6 +31,9 @@ app.use(cookieParser());
 
 // To parse form data in POST request body
 app.use(express.urlencoded({ extended: true }));
+
+// ✅ Webhooks FIRST (raw body needed)
+app.use('/api/webhooks', webhookRoute);
 
 // To parse incoming JSON in POST request body
 app.use(express.json({ limit: '2mb' }));

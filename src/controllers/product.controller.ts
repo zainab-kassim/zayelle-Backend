@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import { supabase } from '../config/db';
 import { getCachedRates } from '../utils/getCachedRates';
+import { getRate } from '../utils/getRate';
 
 export const GetProducts = async (req: Request, res: Response) => {
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
 
   const { data: products, error } = await supabase
     .from('products')
@@ -27,7 +28,7 @@ export const GetProducts = async (req: Request, res: Response) => {
 export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
   const collectionSlug = req.params.collectionSlug;
 
   const { data: CollectionId, error: collectionError } = await supabase
@@ -62,7 +63,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
 export const GetProductByName = async (req: Request, res: Response) => {
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
   const productName = req.params.slug;
 
   const { data: product, error } = await supabase

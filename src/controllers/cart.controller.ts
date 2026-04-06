@@ -1,6 +1,7 @@
 import { supabase } from '../config/db';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
+import { getRate } from '../utils/getRate';
 
 export const addtocart = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
@@ -9,7 +10,7 @@ export const addtocart = async (req: Request, res: Response) => {
   const userid = req.user.id;
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
 
   const { productid, quantity, size } = req.body;
 
@@ -143,7 +144,7 @@ export const updatecartquantity = async (req: Request, res: Response) => {
   const user_id = req.user.id;
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
 
   const { cartitemid, quantity } = req.body;
   const { data: existingCartItem, error: existingCartItemError } =
@@ -221,7 +222,7 @@ export const getcart = async (req: Request, res: Response) => {
   const userid = req.user.id;
   const currency = req.currency;
   const rates = await getCachedRates();
-  const rate = rates[currency || 'USD'];
+  const rate = getRate(rates, currency);
 
   const { data: existingcart, error: existingcarterror } = await supabase
     .from('carts')
