@@ -39,13 +39,11 @@ export const initializePayment = async (req: Request, res: Response) => {
       response.data.data.status === 'pending' ||
       response.data.data.status === 'abandoned'
     ) {
-      return res
-        .status(200)
-        .json({
-          message: 'Payment already initialized',
-          auth_url: response.data.data.authorization_url,
-          status: 'pending',
-        });
+      return res.status(200).json({
+        message: 'Payment already initialized',
+        auth_url: response.data.data.authorization_url,
+        status: 'pending',
+      });
     }
   }
 
