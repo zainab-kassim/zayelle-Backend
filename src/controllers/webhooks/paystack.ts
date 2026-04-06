@@ -39,7 +39,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   try {
     await handlePostPayment(updatedorderstatus.id, updatedorderstatus.cart_id);
   } catch (_err) {
-    // rollback the status so Stripe can safely retry
+    // rollback the status so paystack can safely retry
     await supabase
       .from('order')
       .update({ status: ['pending'] })
