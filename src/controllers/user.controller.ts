@@ -220,12 +220,10 @@ export const refreshToken = async (req: Request, res: Response) => {
 
       if (existingsessionError || !existingsession) {
         // token not in DB - could be stolen/reused
-        return res
-          .status(403)
-          .json({
-            message: 'Session timed out. Please log in again. not found',
-            existingsessionError,
-          });
+        return res.status(403).json({
+          message: 'Session timed out. Please log in again. not found',
+          existingsessionError,
+        });
       }
 
       const accessToken = GenerateAccessToken({
