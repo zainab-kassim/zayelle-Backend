@@ -22,10 +22,7 @@ export const currencyMiddleware = async (
   }
 
   try {
-    const ip =
-      process.env.NODE_ENV !== 'production'
-        ? '24.48.0.1' // temp Canadian IP for testing
-        : req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const ip = req.ip;
     const geo = await fetch(`https://free.freeipapi.com/api/json/${ip}`);
     const data = await geo.json();
 
