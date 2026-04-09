@@ -29,7 +29,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       .update({ status: ['success'] })
       .eq('reference', reference)
       .eq('status', ['pending'])
-      .eq('id', data.metadata.order_id)
+      .eq('id', data.metadata.orderId)
       .select(`id,cart_id`)
       .single();
 
