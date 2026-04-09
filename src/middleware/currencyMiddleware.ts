@@ -4,6 +4,9 @@ const SUPPORTED_CURRENCIES = ['USD', 'GBP', 'CAD', 'NGN'];
 
 const DEFAULT_CURRENCY = 'USD';
 
+// cache per IP
+const ipCache = new Map<string, { currency: string; fetchedAt: Date }>();
+
 export const currencyMiddleware = async (
   req: Request,
   res: Response,
@@ -22,14 +25,28 @@ export const currencyMiddleware = async (
   }
 
   try {
-    const ip = req.ip;
+    const ip = req.ip as string;
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const cached = ipCache.get(ip);
+
+    // return cached result if fresh
+    if (cached && cached.fetchedAt > oneHourAgo) {
+      req.currency = cached.currency;
+      return next();
+    }
+
     const geo = await fetch(`https://free.freeipapi.com/api/json/${ip}`);
     const data = await geo.json();
 
     const currencyfromIp = data.currencies?.[0]?.toUpperCase();
-    req.currency = SUPPORTED_CURRENCIES.includes(currencyfromIp)
+
+    const detectedCurrency = SUPPORTED_CURRENCIES.includes(currencyfromIp)
       ? currencyfromIp
       : DEFAULT_CURRENCY;
+
+    // store in cache
+    ipCache.set(ip, { currency: detectedCurrency, fetchedAt: new Date() });
+    req.currency = detectedCurrency;
   } catch (_error) {
     req.currency = 'USD'; // fallback if API fails
   }

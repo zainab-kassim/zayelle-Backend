@@ -12,6 +12,7 @@ import stripePaymentRoutes from './routes/stripe.payment.routes';
 import { currencyMiddleware } from './middleware/currencyMiddleware';
 import webhookRoute from './routes/webhook.routes';
 import { generalLimiter } from './middleware/consume';
+import { throttle, strictThrottle } from './middleware/throttle';
 
 const PORT = 4000;
 
@@ -48,22 +49,22 @@ app.use(express.json({ limit: '2mb' }));
 app.use(currencyMiddleware);
 
 // Middleware to use user routes
-app.use('/api/auth', userRoutes);
+app.use('/api/auth', throttle, userRoutes);
 
 // Middleware to use product routes
-app.use('/api/products', productRoutes);
+app.use('/api/products', throttle, productRoutes);
 
 //middleware to use cart routes
-app.use('/api/cart', cartRoutes);
+app.use('/api/cart', throttle, cartRoutes);
 
 //middleware to use order routes
-app.use('/api/order', orderRoutes);
+app.use('/api/order', throttle, orderRoutes);
 
 //middleware to use payment routes
-app.use('/api/payment/paystack', paystackPaymentRoutes);
+app.use('/api/payment/paystack', strictThrottle, paystackPaymentRoutes);
 
 //middleware for stripe payment routes
-app.use('/api/payment/stripe', stripePaymentRoutes);
+app.use('/api/payment/stripe', strictThrottle, stripePaymentRoutes);
 
 //To handle errors
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
