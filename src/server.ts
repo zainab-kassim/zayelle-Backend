@@ -11,6 +11,7 @@ import paystackPaymentRoutes from './routes/paystack.payment.routes';
 import stripePaymentRoutes from './routes/stripe.payment.routes';
 import { currencyMiddleware } from './middleware/currencyMiddleware';
 import webhookRoute from './routes/webhook.routes';
+import { generalLimiter } from './middleware/consume';
 
 const PORT = 4000;
 
@@ -22,6 +23,9 @@ if (process.env.NODE_ENV !== 'production') {
 // Initialize Express application
 const app = express();
 
+// Trust the first proxy (if behind a proxy like Nginx or Heroku)
+app.set('trust proxy', 1);
+
 // Use the CORS middleware
 app.use(corsMiddleware);
 
@@ -29,11 +33,14 @@ app.options('/', corsMiddleware);
 
 app.use(cookieParser());
 
-// To parse form data in POST request body
-app.use(express.urlencoded({ extended: true }));
-
 // ✅ Webhooks FIRST (raw body needed)
 app.use('/api/webhooks', webhookRoute);
+
+// Apply general rate limiter to all routes
+app.use(generalLimiter);
+
+// To parse form data in POST request body
+app.use(express.urlencoded({ extended: true }));
 
 // To parse incoming JSON in POST request body
 app.use(express.json({ limit: '2mb' }));

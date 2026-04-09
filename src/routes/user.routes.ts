@@ -10,14 +10,21 @@ import { userSignupSchema } from '../schemas/user.signup.schema';
 import { userLoginSchema } from '../schemas/user.login.schema';
 import { validateUser } from '../middleware/validate';
 import { isLoggedIn } from '../middleware/isLoggedIn';
+import { authLimiter } from '../middleware/consume';
 
 const router = Router();
 router.post(
   '/signup',
+  authLimiter,
   validateUser(userSignupSchema),
   handleAsyncErr(UserSignup),
 );
-router.post('/login', validateUser(userLoginSchema), handleAsyncErr(UserLogin));
+router.post(
+  '/login',
+  authLimiter,
+  validateUser(userLoginSchema),
+  handleAsyncErr(UserLogin),
+);
 router.post('/logout', isLoggedIn, handleAsyncErr(UserLogout));
 
 //Refresh Token

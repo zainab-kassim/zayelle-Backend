@@ -9,11 +9,13 @@ import { Router } from 'express';
 import { validateUser } from '../middleware/validate';
 import { createOrderSchema } from '../schemas/create.order.schema';
 import { updateShippingInfoSchema } from '../schemas/shippingInfo.schema';
+import { paymentLimiter } from '../middleware/consume';
 
 const router = Router();
 router.post(
   '/',
   isLoggedIn,
+  paymentLimiter,
   validateUser(createOrderSchema),
   handleAsyncErr(createorder),
 );
@@ -21,6 +23,7 @@ router.get('/orderhistory', isLoggedIn, handleAsyncErr(getorderhistory));
 router.post(
   '/edit-shipping-info',
   isLoggedIn,
+  paymentLimiter,
   validateUser(updateShippingInfoSchema),
   handleAsyncErr(updateshippinginfo),
 );
