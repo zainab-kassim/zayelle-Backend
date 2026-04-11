@@ -13,6 +13,8 @@ import { currencyMiddleware } from './middleware/currencyMiddleware';
 import webhookRoute from './routes/webhook.routes';
 import { generalLimiter } from './middleware/consume';
 import { throttle, strictThrottle } from './middleware/throttle';
+import helmet from 'helmet';
+import logger from './middleware/logger';
 
 const PORT = 4000;
 
@@ -27,6 +29,11 @@ const app = express();
 // Trust the first proxy (if behind a proxy like Nginx or Heroku)
 app.set('trust proxy', 1);
 
+app.use((req: Request, res: Response, next: NextFunction) => {
+  logger.info({ method: req.method, url: req.url }, 'Incoming request');
+  next();
+});
+
 // Use the CORS middleware
 app.use(corsMiddleware);
 
@@ -34,11 +41,10 @@ app.options('/', corsMiddleware);
 
 app.use(cookieParser());
 
+app.use(helmet());
+
 // ✅ Webhooks FIRST (raw body needed)
 app.use('/api/webhooks', webhookRoute);
-
-// Apply general rate limiter to all routes
-app.use(generalLimiter);
 
 // To parse form data in POST request body
 app.use(express.urlencoded({ extended: true }));
@@ -51,20 +57,22 @@ app.use(currencyMiddleware);
 // Middleware to use user routes
 app.use('/api/auth', throttle, userRoutes);
 
-// Middleware to use product routes
-app.use('/api/products', throttle, productRoutes);
-
 //middleware to use cart routes
 app.use('/api/cart', throttle, cartRoutes);
-
-//middleware to use order routes
-app.use('/api/order', throttle, orderRoutes);
 
 //middleware to use payment routes
 app.use('/api/payment/paystack', strictThrottle, paystackPaymentRoutes);
 
 //middleware for stripe payment routes
 app.use('/api/payment/stripe', strictThrottle, stripePaymentRoutes);
+
+app.use(generalLimiter);
+
+// Middleware to use product routes
+app.use('/api/products', throttle, productRoutes);
+
+//middleware to use order routes
+app.use('/api/order', throttle, orderRoutes);
 
 //To handle errors
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {

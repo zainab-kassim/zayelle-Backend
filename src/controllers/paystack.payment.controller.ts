@@ -58,6 +58,7 @@ export const initializePayment = async (req: Request, res: Response) => {
       reference,
       metadata: {
         orderId: order_id,
+        currency,
       },
     },
     {

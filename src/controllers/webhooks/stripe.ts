@@ -24,6 +24,8 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     .eq('paymentIntent_id', paymentIntent_id)
     .eq('status', ['pending'])
     .eq('id', event.data.object.metadata.order_id)
+    .eq('currency', event.data.object.currency.toUpperCase())
+    .eq('totalLocal', event.data.object.amount / 100)
     .select('id, cart_id')
     .single();
 

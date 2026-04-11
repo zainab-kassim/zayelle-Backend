@@ -10,8 +10,14 @@ import { Request, Response, NextFunction } from 'express';
 const createMiddleware = (limiter: RateLimiterMemory) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.ip) return res.status(429).send('Too many requests');
-      await limiter.consume(req.ip);
+      const ip =
+        (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+        req.ip ||
+        req.socket.remoteAddress;
+
+      if (!ip) return res.status(400).send('Invalid');
+
+      await limiter.consume(ip);
       next();
     } catch {
       res.status(429).send('Too many requests');

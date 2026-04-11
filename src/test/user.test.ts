@@ -8,8 +8,8 @@ dotenv.config();
 describe('User Routes', () => {
   it('create user account', async () => {
     const response = await request(app).post('/api/auth/signup').send({
-      firstName: 'John',
-      lastName: 'Doe',
+      firstName: 'Sarah',
+      lastName: 'Dole',
       email: process.env.TEST_USER_EMAIL,
       phoneNumber: '1234567890',
       password: process.env.TEST_USER_PASSWORD,

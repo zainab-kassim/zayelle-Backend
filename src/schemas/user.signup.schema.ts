@@ -5,5 +5,5 @@ export const userSignupSchema = z.object({
   lastName: z.string().min(2),
   email: z.string().email(),
   phoneNumber: z.string().min(10).max(15),
-  password: z.string().min(6),
+  password: z.string().min(12),
 });
