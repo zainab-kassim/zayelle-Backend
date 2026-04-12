@@ -15,7 +15,6 @@ export const paystackWebhook = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Invalid' });
   }
 
-  // Only care about successful charges
   const { event, data } = req.body;
   if (event !== 'charge.success') {
     return res.status(200).json({ message: 'Payment not successful' });
