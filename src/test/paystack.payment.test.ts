@@ -9,8 +9,8 @@ describe('paystack payment routes', () => {
     const response = await request(app)
       .post('/api/payment/paystack/initialize')
       .send({
-        email: `${process.env.TESTEMAIL}`,
-        order_id: 15,
+        email: `${process.env.TEST_USER_EMAIL}`,
+        order_id: 23,
       })
       .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`);
     expect(response.status).toBe(200);

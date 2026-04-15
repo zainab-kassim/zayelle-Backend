@@ -16,8 +16,36 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   }
 
   const { event, data } = req.body;
+  // Payment failed — restore inventory
+  if (event === 'charge.failed') {
+    const orderId = data.metadata.orderId;
+
+    const { data: order } = await supabase
+      .from('order')
+      .select('cart_id')
+      .eq('id', orderId)
+      .single();
+
+    if (order) {
+      const { data: cartItems } = await supabase
+        .from('cart_items')
+        .select('product_id, quantity')
+        .eq('cart_id', order.cart_id);
+
+      if (cartItems) {
+        for (const item of cartItems) {
+          await supabase.rpc('increment_inventory', {
+            p_product_id: item.product_id,
+            p_quantity: item.quantity,
+          });
+        }
+      }
+    }
+    return res.status(200).json({ message: 'Inventory restored' });
+  }
+
   if (event !== 'charge.success') {
-    return res.status(200).json({ message: 'Payment not successful' });
+    return res.status(200).json({ message: 'Event ignored' });
   }
 
   const reference = data.reference;

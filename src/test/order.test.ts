@@ -9,15 +9,16 @@ describe('Order Routes', () => {
     const response = await request(app)
       .post('/api/order')
       .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`)
+      .set('x-currency', 'NGN')
       .send({
-        cart_id: 8,
-        street_address: '28 calgary',
-        apt_no: 'Apt 6V',
+        cart_id: 9,
+        street_address: '123 Main St',
+        apt_no: 'Apt 6S',
         phone_number: '982746663',
-        city: 'ottawa',
-        state: 'ON',
-        postal_code: 'K1C 8D8',
-        country: 'Canada',
+        city: 'Lekki',
+        state: 'Lagos',
+        postal_code: '1010100',
+        country: 'Nigeria',
       });
     expect(response.status).toBe(200);
   });

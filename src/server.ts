@@ -31,6 +31,7 @@ app.set('trust proxy', 1);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info({ method: req.method, url: req.url }, 'Incoming request');
+  logger.debug({ headers: req.headers, body: req.body }, 'Request details');
   next();
 });
 
@@ -76,7 +77,9 @@ app.use('/api/order', throttle, orderRoutes);
 
 //To handle errors
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
+  if (process.env.NODE_ENV !== 'production') {
+    logger.error({ err, method: req.method, url: req.url }, err.message);
+  }
   res.status(500).json({ message: 'Something went wrong' });
 });
 
@@ -88,8 +91,7 @@ const StartServer = async () => {
       console.log(`Zayelle server is running on http://localhost:${PORT}`);
     });
   } catch (err) {
-    console.error('Failed to connect to DB:', err);
-    console.error(err);
+    logger.error({ err }, 'Failed to connect to DB');
   }
 };
 

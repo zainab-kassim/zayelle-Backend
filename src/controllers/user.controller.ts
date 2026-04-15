@@ -68,7 +68,6 @@ export const UserSignup = async (req: Request, res: Response) => {
     });
 
   if (sessionError) {
-    console.error('Session delete error:', sessionError);
     return res.status(500).json({ message: 'Something went wrong' });
   }
 
@@ -117,7 +116,6 @@ export const UserLogin = async (req: Request, res: Response) => {
       .single();
 
   if (existingSessionError && existingSessionError.code !== 'PGRST116') {
-    console.error('Error checking existing session:', existingSessionError);
     return res.status(500).json({ message: 'Something went wrong' });
   }
 
@@ -130,7 +128,6 @@ export const UserLogin = async (req: Request, res: Response) => {
       .eq('user_id', user.id);
 
     if (sessionError) {
-      console.error('Session insert error:', sessionError);
       return res.status(500).json({ message: 'Something went wrong' });
     }
 
@@ -148,7 +145,6 @@ export const UserLogin = async (req: Request, res: Response) => {
     });
 
   if (sessionError) {
-    console.error('Session insert error:', sessionError);
     return res.status(500).json({ message: 'Something went wrong' });
   }
 
@@ -168,7 +164,6 @@ export const UserLogout = async (req: Request, res: Response) => {
     .eq('user_id', req.user.id);
 
   if (sessionError) {
-    console.error('Session delete error:', sessionError);
     return res.status(500).json({ message: 'Something went wrong' });
   }
   RemoveAccessTokenCookieOptions(res);
@@ -250,7 +245,6 @@ export const refreshToken = async (req: Request, res: Response) => {
         .eq('user_id', payload.id);
 
       if (sessionError) {
-        console.error('Error fetching session:', sessionError);
         return res.status(500).json({ message: 'Something went wrong' });
       }
 

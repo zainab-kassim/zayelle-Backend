@@ -1,4 +1,5 @@
 import { supabase } from './config/db';
+import logger from './middleware/logger';
 
 export async function generateCollection() {
   const { data: NewCollection, error } = await supabase
@@ -14,6 +15,6 @@ export async function generateCollection() {
     .single();
 
   if (error || !NewCollection) {
-    console.log(error);
+    logger.error({ error }, 'Error creating collection');
   }
 }

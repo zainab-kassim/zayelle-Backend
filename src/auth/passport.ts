@@ -3,6 +3,7 @@ import passport from 'passport';
 import { Request } from 'express';
 import { Strategy as JwtStrategy } from 'passport-jwt';
 import { supabase } from '../config/db';
+import logger from '../middleware/logger';
 
 // Function to extract token from cookies
 const extractJwtFromCookies = (req: Request) => {
@@ -29,7 +30,7 @@ export default passport.use(
         return done(null, false);
       }
     } catch (error) {
-      console.log(error);
+      logger.error({ error }, 'Error in JWT strategy');
       return done(error, false);
     }
   }),

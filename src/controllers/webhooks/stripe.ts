@@ -12,6 +12,35 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     process.env.STRIPE_WEBHOOK_SECRET!,
   );
 
+  // Payment failed — restore inventory
+  if (event.type === 'payment_intent.payment_failed') {
+    const orderId = event.data.object.metadata.order_id;
+
+    const { data: order } = await supabase
+      .from('order')
+      .select('cart_id')
+      .eq('id', orderId)
+      .single();
+
+    if (order) {
+      const { data: cartItems } = await supabase
+        .from('cart_items')
+        .select('product_id, quantity')
+        .eq('cart_id', order.cart_id);
+
+      if (cartItems) {
+        for (const item of cartItems) {
+          await supabase.rpc('increment_inventory_on_restore', {
+            p_product_id: item.product_id,
+            p_quantity: item.quantity,
+          });
+        }
+      }
+    }
+
+    return res.status(200).json({ message: 'Inventory restored' });
+  }
+
   if (event.type !== 'payment_intent.succeeded') {
     return res.status(200).json({ message: 'Event ignored' });
   }

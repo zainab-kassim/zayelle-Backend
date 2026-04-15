@@ -9,11 +9,12 @@ describe('Cart Routes', () => {
     const response = await request(app)
       .post('/api/cart/addtocart')
       .send({
-        productid: 4,
+        productid: 1,
         quantity: 2,
         size: 'M',
       })
-      .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`);
+      .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`)
+      .set('x-currency', 'NGN');
     expect(response.status).toBe(200);
   });
 });
@@ -23,10 +24,11 @@ describe('Cart Routes', () => {
     const response = await request(app)
       .put('/api/cart/updatequantity')
       .send({
-        cartitemid: 53,
-        quantity: 3,
+        cartitemid: 59,
+        quantity: 1,
       })
-      .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`);
+      .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`)
+      .set('x-currency', 'NGN');
     expect(response.status).toBe(200);
   });
 });
@@ -45,7 +47,7 @@ describe('Cart Routes', () => {
     const response = await request(app)
       .delete('/api/cart/deletecartitem')
       .send({
-        cartitemid: 35,
+        cartitemid: 60,
       })
       .set('Cookie', `accessToken=${process.env.TEST_ACCESS_TOKEN}`);
     expect(response.status).toBe(200);

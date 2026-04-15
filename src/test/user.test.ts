@@ -41,7 +41,7 @@ describe('User Routes', () => {
     const { data: sessionBefore } = await supabaseAdmin
       .from('sessions')
       .select('refresh_token')
-      .eq('user_id', 10)
+      .eq('user_id', 11)
       .single();
 
     const refreshResponse = await request(app)
@@ -59,7 +59,7 @@ describe('User Routes', () => {
     const { data: sessionAfter } = await supabaseAdmin
       .from('sessions')
       .select('refresh_token')
-      .eq('user_id', 10)
+      .eq('user_id', 11)
       .single();
 
     expect(sessionBefore?.refresh_token).not.toBe(sessionAfter?.refresh_token);

@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
 import { supabase } from '../config/db';
+import logger from '../middleware/logger';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-02-25.clover',
@@ -41,35 +42,81 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
     }
   }
 
-  const paymentIntent = await stripe.paymentIntents.create(
-    {
-      amount: converted_price,
-      currency: order.currency.toLowerCase(),
-      metadata: { order_id },
-    },
-    {
-      idempotencyKey: `order_${order_id}`,
-    },
+  // 1. Decrement inventory atomically before touching Stripe
+  const { error: rpcError } = await supabase.rpc(
+    'decrement_inventory_on_payment',
+    { p_order_id: order_id },
   );
 
-  const { error: updatedOrderError } = await supabase
-    .from('order')
-    .update({ paymentIntent_id: paymentIntent.id })
-    .eq('id', order_id)
-    .eq('user_id', req.user.id)
-    .single();
-
-  if (updatedOrderError) {
-    return res.status(500).json({
-      message: 'Error updating order',
-    });
+  if (rpcError) {
+    if (rpcError.message.includes('OUT_OF_STOCK')) {
+      return res
+        .status(400)
+        .json({ message: 'One or more items are out of stock' });
+    }
+    return res.status(500).json({ message: 'Failed to process inventory' });
   }
 
-  return res.status(200).json({
-    message: 'Payment initialized successfully',
-    client_secret: paymentIntent.client_secret,
-    paymentIntent_id: paymentIntent.id,
-  });
+  try {
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: converted_price,
+        currency: order.currency.toLowerCase(),
+        metadata: { order_id },
+      },
+      {
+        idempotencyKey: `order_${order_id}`,
+      },
+    );
+
+    const { error: updatedOrderError } = await supabase
+      .from('order')
+      .update({ paymentIntent_id: paymentIntent.id })
+      .eq('id', order_id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (updatedOrderError) {
+      return res.status(500).json({
+        message: 'Error updating order',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'Payment initialized successfully',
+      client_secret: paymentIntent.client_secret,
+      paymentIntent_id: paymentIntent.id,
+    });
+  } catch (err) {
+    // Stripe failed — restore inventory
+    await restoreInventory(order_id);
+    logger.error({ err }, 'Stripe payment initialization failed');
+    return res.status(500).json({ message: 'Payment initialization failed' });
+  }
+};
+
+const restoreInventory = async (order_id: number) => {
+  const { data: order } = await supabase
+    .from('order')
+    .select('cart_id')
+    .eq('id', order_id)
+    .single();
+
+  if (!order) return;
+
+  const { data: cartItems } = await supabase
+    .from('cart_items')
+    .select('product_id, quantity')
+    .eq('cart_id', order.cart_id);
+
+  if (!cartItems) return;
+
+  for (const item of cartItems) {
+    await supabase.rpc('increment_inventory_on_restore', {
+      p_product_id: item.product_id,
+      p_quantity: item.quantity,
+    });
+  }
 };
 
 export const verifyStripePayment = async (req: Request, res: Response) => {
