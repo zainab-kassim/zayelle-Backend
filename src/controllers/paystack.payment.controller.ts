@@ -5,7 +5,7 @@ import logger from '../middleware/logger';
 
 export const initializePayment = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'User not authenticated' });
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
   const email = req.user.email;
@@ -47,23 +47,6 @@ export const initializePayment = async (req: Request, res: Response) => {
         status: 'pending',
       });
     }
-  }
-
-  // 1. Decrement inventory atomically via RPC before touching payment
-  const { error: rpcError } = await supabase.rpc(
-    'decrement_inventory_on_payment',
-    {
-      p_order_id: order_id,
-    },
-  );
-
-  if (rpcError) {
-    if (rpcError.message.includes('OUT_OF_STOCK')) {
-      return res
-        .status(400)
-        .json({ message: 'One or more items are out of stock' });
-    }
-    return res.status(500).json({ message: 'Failed to process inventory' });
   }
 
   const converted_price = order.totalLocal * 100;
@@ -108,35 +91,8 @@ export const initializePayment = async (req: Request, res: Response) => {
       reference,
     });
   } catch (err) {
-    // Paystack initialization failed — restore inventory
-    await restoreInventory(order_id);
     logger.error({ error: err }, 'Payment initialization failed');
     return res.status(500).json({ message: 'Error initializing payment' });
-  }
-};
-
-// Compensating function — adds stock back if payment initiation fails
-const restoreInventory = async (order_id: number) => {
-  const { data: order } = await supabase
-    .from('order')
-    .select('cart_id')
-    .eq('id', order_id)
-    .single();
-
-  if (!order) return;
-
-  const { data: cartItems } = await supabase
-    .from('cart_items')
-    .select('product_id, quantity')
-    .eq('cart_id', order.cart_id);
-
-  if (!cartItems) return;
-
-  for (const item of cartItems) {
-    await supabase
-      .from('products')
-      .update({ quantity: supabase.rpc('increment', { x: item.quantity }) })
-      .eq('id', item.product_id);
   }
 };
 

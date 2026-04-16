@@ -65,6 +65,22 @@ export const createorder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Error creating order' });
   }
 
+  const { error: rpcError } = await supabase.rpc(
+    'decrement_inventory_on_checkout',
+    {
+      p_order_id: neworder.id,
+    },
+  );
+
+  if (rpcError) {
+    if (rpcError.message.includes('OUT_OF_STOCK')) {
+      return res
+        .status(400)
+        .json({ message: 'One or more items are out of stock' });
+    }
+    return res.status(500).json({ message: 'Failed to process inventory' });
+  }
+
   return res
     .status(200)
     .json({ message: 'Order created successfully', order: neworder });
