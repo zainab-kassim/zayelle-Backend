@@ -49,9 +49,9 @@ export const stripeWebhook = async (req: Request, res: Response) => {
 
   const { data: updatedOrder, error } = await supabase
     .from('order')
-    .update({ status: ['success'] })
+    .update({ status: 'success' })
     .eq('paymentIntent_id', paymentIntent_id)
-    .eq('status', ['pending'])
+    .eq('status', 'pending')
     .eq('id', event.data.object.metadata.order_id)
     .eq('currency', event.data.object.currency.toUpperCase())
     .eq('totalLocal', event.data.object.amount / 100)
@@ -68,7 +68,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     // rollback the status so Stripe can safely retry
     await supabase
       .from('order')
-      .update({ status: ['pending'] })
+      .update({ status: 'pending' })
       .eq('id', updatedOrder.id);
 
     return res.status(500).json({ message: 'Post payment failed, retrying' });

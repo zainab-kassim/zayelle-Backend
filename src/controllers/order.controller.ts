@@ -44,7 +44,7 @@ export const createorder = async (req: Request, res: Response) => {
       user_id,
       cart_id,
       total_price,
-      status: ['pending'],
+      status: 'pending',
       phone_number,
       street_address,
       apt_no,
@@ -65,22 +65,6 @@ export const createorder = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Error creating order' });
   }
 
-  const { error: rpcError } = await supabase.rpc(
-    'decrement_inventory_on_checkout',
-    {
-      p_order_id: neworder.id,
-    },
-  );
-
-  if (rpcError) {
-    if (rpcError.message.includes('OUT_OF_STOCK')) {
-      return res
-        .status(400)
-        .json({ message: 'One or more items are out of stock' });
-    }
-    return res.status(500).json({ message: 'Failed to process inventory' });
-  }
-
   return res
     .status(200)
     .json({ message: 'Order created successfully', order: neworder });
@@ -96,7 +80,7 @@ export const getorderhistory = async (req: Request, res: Response) => {
     .from('order')
     .select(`*, order_items(*, product_id(name, slug, image, description))`)
     .eq('user_id', user_id)
-    .contains('status', ['success']);
+    .contains('status', 'success');
 
   if (error) {
     return res.status(500).json({ message: 'Error fetching order history' });

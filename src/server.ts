@@ -77,9 +77,7 @@ app.use('/api/order', throttle, orderRoutes);
 
 //To handle errors
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
-  if (process.env.NODE_ENV !== 'production') {
-    logger.error({ err, method: req.method, url: req.url }, err.message);
-  }
+  logger.error({ err, method: req.method, url: req.url }, err.message);
   res.status(500).json({ message: 'Something went wrong' });
 });
 

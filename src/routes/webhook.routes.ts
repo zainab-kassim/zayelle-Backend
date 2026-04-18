@@ -11,6 +11,10 @@ router.post(
   handleAsyncErr(stripeWebhook),
 );
 
-router.post('/paystack', handleAsyncErr(paystackWebhook));
+router.post(
+  '/paystack',
+  express.raw({ type: 'application/json' }),
+  handleAsyncErr(paystackWebhook),
+);
 
 export default router;

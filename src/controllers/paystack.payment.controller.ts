@@ -37,16 +37,41 @@ export const initializePayment = async (req: Request, res: Response) => {
         .status(200)
         .json({ message: 'Payment already successful', status: 'success' });
     }
-    if (
-      response.data.data.status === 'pending' ||
-      response.data.data.status === 'abandoned'
-    ) {
+    if (response.data.data.status === 'pending') {
       return res.status(200).json({
         message: 'Payment already initialized',
         auth_url: response.data.data.authorization_url,
         status: 'pending',
       });
     }
+    if (
+      response.data.data.status === 'failed' ||
+      response.data.data.status === 'abandoned'
+    ) {
+      return res.status(400).json({
+        message: 'This order has expired, please start a new checkout',
+      });
+    }
+  }
+
+  const { error: rpcError } = await supabase.rpc(
+    'decrement_inventory_on_checkout',
+    {
+      p_order_id: order_id,
+    },
+  );
+
+  if (rpcError) {
+    if (rpcError.message.includes('OUT_OF_STOCK')) {
+      return res
+        .status(400)
+        .json({ message: 'One or more items are out of stock' });
+    }
+    logger.error(
+      { error: rpcError },
+      'Failed to decrement inventory on checkout',
+    );
+    return res.status(500).json({ message: 'Failed to process inventory' });
   }
 
   const converted_price = order.totalLocal * 100;
@@ -81,7 +106,17 @@ export const initializePayment = async (req: Request, res: Response) => {
         .single();
 
     if (updated_order_error) {
-      return res.status(500).json({ message: 'Error updating order' });
+      const restoreError = await supabase.rpc(
+        'increment_inventory_on_restore',
+        { p_order_id: order_id },
+      );
+      if (restoreError) {
+        logger.error(
+          { error: restoreError },
+          'CRITICAL: inventory restore failed',
+        );
+      }
+      return res.status(500).json({ message: 'Unable to make order' });
     }
 
     return res.status(200).json({
@@ -91,6 +126,15 @@ export const initializePayment = async (req: Request, res: Response) => {
       reference,
     });
   } catch (err) {
+    const restoreError = await supabase.rpc('increment_inventory_on_restore', {
+      p_order_id: order_id,
+    });
+    if (restoreError) {
+      logger.error(
+        { error: restoreError },
+        'CRITICAL: inventory restore failed',
+      );
+    }
     logger.error({ error: err }, 'Payment initialization failed');
     return res.status(500).json({ message: 'Error initializing payment' });
   }
@@ -104,13 +148,73 @@ export const verifyPayment = async (req: Request, res: Response) => {
 
   const { data: order, error } = await supabase
     .from('order')
-    .select('status')
+    .select('status,id')
     .eq('reference', reference)
     .eq('user_id', req.user.id)
     .single();
 
   if (error || !order) {
     return res.status(404).json({ message: 'Order not found' });
+  }
+
+  if (order.status === 'pending') {
+    const { data } = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      },
+    );
+
+    if (data.data.status === 'success') {
+      const { error: updated_order_error } = await supabase
+        .from('order')
+        .update({ status: 'success' })
+        .eq('reference', reference)
+        .eq('user_id', req.user.id)
+        .single();
+
+      if (updated_order_error) {
+        return res.status(500).json({ message: 'Unable to verify order' });
+      }
+      return res
+        .status(200)
+        .json({ message: 'Payment successful', status: 'success' });
+    }
+
+    if (data.data.status === 'pending') {
+      return res.status(200).json({
+        message: 'Payment still pending',
+        status: 'pending',
+      });
+    }
+
+    if (data.data.status === 'failed' || data.data.status === 'abandoned') {
+      const { error: updated_order_error } = await supabase
+        .from('order')
+        .update({ status: `${data.data.status}` })
+        .eq('reference', reference)
+        .eq('user_id', req.user.id)
+        .single();
+
+      if (updated_order_error) {
+        return res.status(500).json({ message: 'Unable to verify order' });
+      }
+
+      const restoreError = await supabase.rpc(
+        'increment_inventory_on_restore',
+        { p_order_id: order.id },
+      );
+      if (restoreError) {
+        logger.error(
+          { error: restoreError },
+          'CRITICAL: inventory restore failed',
+        );
+      }
+      return res.status(400).json({
+        message: 'Payment failed or expired',
+        status: 'failed',
+      });
+    }
   }
 
   return res
