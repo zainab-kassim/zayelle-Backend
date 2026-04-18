@@ -15,6 +15,7 @@ import { generalLimiter } from './middleware/consume';
 import { throttle, strictThrottle } from './middleware/throttle';
 import helmet from 'helmet';
 import logger from './middleware/logger';
+import { cleanupJob } from './jobs/cleanup';
 
 const PORT = 4000;
 
@@ -54,6 +55,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json({ limit: '2mb' }));
 
 app.use(currencyMiddleware);
+
+// Start the cleanup job to run daily at midnight
+cleanupJob.start();
 
 // Middleware to use user routes
 app.use('/api/auth', throttle, userRoutes);
