@@ -50,13 +50,11 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   }
 
   if (event.type === 'payment_intent.requires_action') {
-    return res
-      .status(200)
-      .json({
-        message:
-          'verify payment from bank, a confirmation email or code has been sent if required',
-        status: 'pending',
-      });
+    return res.status(200).json({
+      message:
+        'verify payment from bank, a confirmation email or code has been sent if required',
+      status: 'pending',
+    });
   }
 
   if (event.type !== 'payment_intent.succeeded') {
