@@ -20,7 +20,7 @@ export const deleteStaleRecords = async () => {
     .from('order')
     .delete()
     .lt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-    .in('status', ['abandoned', 'failed']);
+    .in('status', ['abandoned', 'failed', 'canceled']);
 
   if (deleteError) {
     logger.error({ error: deleteError }, 'Error deleting stale records');

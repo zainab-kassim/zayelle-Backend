@@ -2,6 +2,7 @@ import axios from 'axios';
 import { Request, Response } from 'express';
 import { supabase } from '../config/db';
 import logger from '../middleware/logger';
+import { handlePostPayment } from '../utils/handlePostPayment';
 
 export const initializePayment = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -148,7 +149,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
 
   const { data: order, error } = await supabase
     .from('order')
-    .select('status,id')
+    .select('status,id,cart_id')
     .eq('reference', reference)
     .eq('user_id', req.user.id)
     .single();
@@ -175,6 +176,20 @@ export const verifyPayment = async (req: Request, res: Response) => {
 
       if (updated_order_error) {
         return res.status(500).json({ message: 'Unable to verify order' });
+      }
+
+      try {
+        await handlePostPayment(order.id, order.cart_id);
+      } catch (_err) {
+        // rollback the status so paystack can safely retry
+        await supabase
+          .from('order')
+          .update({ status: 'pending' })
+          .eq('id', order.id);
+
+        return res
+          .status(500)
+          .json({ message: 'network error, please reload the page' });
       }
       return res
         .status(200)
@@ -216,8 +231,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
       });
     }
   }
-
   return res
     .status(200)
-    .json({ message: 'order successful', status: order.status });
+    .json({ message: 'Payment already processed', status: order.status });
 };

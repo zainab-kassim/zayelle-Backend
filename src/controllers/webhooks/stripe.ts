@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../../config/db';
 import stripe from 'stripe';
 import { handlePostPayment } from '../../utils/handlePostPayment';
+import logger from '../../middleware/logger';
 
 export const stripeWebhook = async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature']!;
@@ -13,32 +14,49 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   );
 
   // Payment failed — restore inventory
-  if (event.type === 'payment_intent.payment_failed') {
+  if (
+    event.type === 'payment_intent.payment_failed' ||
+    event.type === 'payment_intent.canceled'
+  ) {
     const orderId = event.data.object.metadata.order_id;
+    const status =
+      event.type === 'payment_intent.canceled' ? 'canceled' : 'failed';
+    const failureReason = event.data.object.last_payment_error?.code;
 
-    const { data: order } = await supabase
+    const { data: order, error: orderError } = await supabase
       .from('order')
-      .select('cart_id')
+      .update({ status: status })
       .eq('id', orderId)
+      .eq('status', 'pending')
+      .select('id')
       .single();
 
-    if (order) {
-      const { data: cartItems } = await supabase
-        .from('cart_items')
-        .select('product_id, quantity')
-        .eq('cart_id', order.cart_id);
-
-      if (cartItems) {
-        for (const item of cartItems) {
-          await supabase.rpc('increment_inventory_on_restore', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-          });
-        }
-      }
+    if (!order || orderError) {
+      return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
     }
 
-    return res.status(200).json({ message: 'Inventory restored' });
+    const restoreError = await supabase.rpc('increment_inventory_on_restore', {
+      p_order_id: orderId,
+    });
+    if (restoreError) {
+      logger.error(
+        { error: restoreError },
+        'CRITICAL: inventory restore failed',
+      );
+    }
+    return res
+      .status(200)
+      .json({ message: 'payment failed', status: status, failureReason });
+  }
+
+  if (event.type === 'payment_intent.requires_action') {
+    return res
+      .status(200)
+      .json({
+        message:
+          'verify payment from bank, a confirmation email or code has been sent if required',
+        status: 'pending',
+      });
   }
 
   if (event.type !== 'payment_intent.succeeded') {
