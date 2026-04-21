@@ -17,6 +17,8 @@
   },
   "scripts": {
     "dev": "ts-node src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "format": "prettier --write .",
     "test": "jest",
     "prepare": "husky",
