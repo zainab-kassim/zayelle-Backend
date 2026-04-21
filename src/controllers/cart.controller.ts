@@ -2,6 +2,7 @@ import { supabase } from '../config/db';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
+import logger from '../middleware/logger';
 
 export const addtocart = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
@@ -21,6 +22,7 @@ export const addtocart = async (req: Request, res: Response) => {
     .single();
 
   if (productError) {
+    logger.error({ productError }, 'invalid product');
     return res.status(404).json({ message: 'invalid product' });
   }
   const { data: existingcart } = await supabase
@@ -41,6 +43,10 @@ export const addtocart = async (req: Request, res: Response) => {
         .single();
 
     if (existingcartitemserror && existingcartitemserror.code !== 'PGRST116') {
+      logger.error(
+        { existingcartitemserror },
+        'Error checking existing cart items',
+      );
       return res.status(500).json({
         message: 'Error checking existing cart items',
       });
@@ -59,6 +65,10 @@ export const addtocart = async (req: Request, res: Response) => {
           .single();
 
       if (updateCartItemError || !updatedCartItem) {
+        logger.error(
+          { updateCartItemError },
+          'Error updating cart item quantity',
+        );
         return res.status(500).json({
           message: 'Error updating cart item quantity',
         });
@@ -86,6 +96,7 @@ export const addtocart = async (req: Request, res: Response) => {
       .single();
 
     if (cartitemerror || !cartitem) {
+      logger.error({ cartitemerror }, 'Error adding item to cart');
       return res.status(500).json({ message: 'Error adding item to cart' });
     }
 
@@ -106,6 +117,7 @@ export const addtocart = async (req: Request, res: Response) => {
     .single();
 
   if (newcarterror || !newcart) {
+    logger.error({ newcarterror }, 'Error creating new cart');
     return res
       .status(500)
       .json({ message: 'Error creating new cart', newcart });
@@ -125,7 +137,8 @@ export const addtocart = async (req: Request, res: Response) => {
     .single();
 
   if (cartitemerror || !cartitem) {
-    return res.status(500).json({ message: 'Error adding item to cart' });
+    logger.error({ cartitemerror }, 'Error adding item to new cart');
+    return res.status(500).json({ message: 'Error adding item to new cart' });
   }
 
   return res.status(200).json({
@@ -156,6 +169,7 @@ export const updatecartquantity = async (req: Request, res: Response) => {
       .single();
 
   if (existingCartItemError || !existingCartItem) {
+    logger.error({ existingCartItemError }, 'Cart item not found');
     return res.status(404).json({ message: 'Cart item not found' });
   }
 
@@ -169,6 +183,7 @@ export const updatecartquantity = async (req: Request, res: Response) => {
     .single();
 
   if (updateCartItemError || !updatedCartItem) {
+    logger.error({ updateCartItemError }, 'Error updating cart item quantity');
     return res.status(500).json({
       message: 'Error updating cart item quantity',
     });
@@ -195,6 +210,7 @@ export const deletecartitem = async (req: Request, res: Response) => {
     .single();
 
   if (carterror || !cart) {
+    logger.error({ carterror }, 'Cart not found');
     return res.status(404).json({ message: 'Cart not found' });
   }
 
@@ -207,6 +223,7 @@ export const deletecartitem = async (req: Request, res: Response) => {
     .single();
 
   if (deletedcartitemerror || !deletedcartitem) {
+    logger.error({ deletedcartitemerror }, 'Error deleting cart item');
     return res.status(500).json({ message: 'Error deleting cart item' });
   }
 
@@ -230,6 +247,7 @@ export const getcart = async (req: Request, res: Response) => {
     .eq('user_id', userid)
     .single();
   if (existingcarterror || !existingcart) {
+    logger.error({ existingcarterror }, 'Cart not found');
     return res.status(404).json({ message: 'Cart not found' });
   }
   const { data: cartitems, error: cartitemserror } = await supabase
@@ -238,6 +256,7 @@ export const getcart = async (req: Request, res: Response) => {
     .eq('cart_id', existingcart.id);
 
   if (cartitemserror) {
+    logger.error({ cartitemserror }, 'Error retrieving cart items');
     return res.status(500).json({ message: 'Error retrieving cart items' });
   }
 

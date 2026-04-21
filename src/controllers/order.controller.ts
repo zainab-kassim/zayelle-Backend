@@ -2,6 +2,7 @@ import { supabase } from '../config/db';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
+import logger from '../middleware/logger';
 
 export const createorder = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -31,6 +32,7 @@ export const createorder = async (req: Request, res: Response) => {
     .single();
 
   if (existingcarterror || !existingcart) {
+    logger.error({ existingcarterror }, 'cart not found');
     return res.status(404).json({ message: 'Cart not found' });
   }
   const total_price = existingcart.cart_items.reduce(
@@ -62,6 +64,7 @@ export const createorder = async (req: Request, res: Response) => {
     .single();
 
   if (newordererror || !neworder) {
+    logger.error({ newordererror }, 'error creating order');
     return res.status(500).json({ message: 'Error creating order' });
   }
 
@@ -76,13 +79,14 @@ export const getorderhistory = async (req: Request, res: Response) => {
   }
   const user_id = req.user.id;
 
-  const { data: orders, error } = await supabase
+  const { data: orders, error: orderError } = await supabase
     .from('order')
     .select(`*, order_items(*, product_id(name, slug, image, description))`)
     .eq('user_id', user_id)
     .contains('status', 'success');
 
-  if (error) {
+  if (orderError) {
+    logger.error({ orderError }, 'Error fetching order history');
     return res.status(500).json({ message: 'Error fetching order history' });
   }
 
@@ -124,6 +128,7 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     .single();
 
   if (updatedordererror) {
+    logger.error({ updatedordererror }, 'Error updating shipping info');
     return res.status(500).json({ message: 'Error updating shipping info' });
   }
 
@@ -140,14 +145,15 @@ export const getOrder = async (req: Request, res: Response) => {
 
   const { order_id } = req.params;
 
-  const { data: order, error } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from('order')
     .select(`*, order_items(*, product_id(name, slug, image, description))`)
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .single();
 
-  if (error || !order) {
+  if (orderError || !order) {
+    logger.error({ orderError }, 'Order not found');
     return res.status(404).json({ message: 'Order not found' });
   }
 

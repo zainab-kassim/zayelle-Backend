@@ -12,6 +12,7 @@ import { RefreshSecretKey } from '../auth/config';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import crypto from 'crypto';
+import logger from '../middleware/logger';
 
 export const UserSignup = async (req: Request, res: Response) => {
   const { firstName, lastName, email, phoneNumber, password } = req.body;
@@ -30,7 +31,7 @@ export const UserSignup = async (req: Request, res: Response) => {
 
   const hashedPassword = await bcrypt.hash(password, 12);
 
-  const { data: newUser, error } = await supabase
+  const { data: newUser, error: newUserError } = await supabase
     .from('users')
     .insert({
       firstname: firstName,
@@ -42,7 +43,8 @@ export const UserSignup = async (req: Request, res: Response) => {
     .select()
     .single();
 
-  if (error || !newUser) {
+  if (newUserError) {
+    logger.error({ newUserError }, 'Error creating user');
     return res.status(500).json({ message: 'Error creating user' });
   }
 
@@ -82,18 +84,20 @@ export const UserSignup = async (req: Request, res: Response) => {
 export const UserLogin = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  const { data: user, error } = await supabase
+  const { data: user, error: userError } = await supabase
     .from('users')
     .select()
     .eq('email', email)
     .single();
 
-  if (!user || error) {
+  if (!user || userError) {
+    logger.error({ userError }, 'Invalid email or password');
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
+    logger.error({ userError }, 'Invalid email or password');
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 

@@ -1,4 +1,5 @@
 import { supabase } from '../config/db';
+import logger from '../middleware/logger';
 
 export const handlePostPayment = async (order_id: number, cart_id: number) => {
   // Fetch cart items
@@ -7,7 +8,10 @@ export const handlePostPayment = async (order_id: number, cart_id: number) => {
     .select('*')
     .eq('cart_id', cart_id);
 
-  if (cartItemsError) throw new Error('Error fetching cart items');
+  if (cartItemsError) {
+    logger.error({ cartItemsError }, 'Error fetching carts');
+    throw new Error('Error fetching cart items');
+  }
 
   // Insert into order_items
   const itemsToInsert = cartItems.map((item) => ({
@@ -27,7 +31,10 @@ export const handlePostPayment = async (order_id: number, cart_id: number) => {
       ignoreDuplicates: true,
     });
 
-  if (orderItemsError) throw new Error('Error creating order items');
+  if (orderItemsError) {
+    logger.error({ orderItemsError }, 'Error creating order items');
+    throw new Error('Error creating Order items');
+  }
 
   // Delete cart items
   const { error: deletedCartItemsError } = await supabase
@@ -35,5 +42,7 @@ export const handlePostPayment = async (order_id: number, cart_id: number) => {
     .delete()
     .eq('cart_id', cart_id);
 
-  if (deletedCartItemsError) throw new Error('Error clearing cart');
+  if (deletedCartItemsError) {
+    logger.error({ deletedCartItemsError }, 'error clearing cart');
+  }
 };

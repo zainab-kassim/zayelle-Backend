@@ -23,6 +23,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
   const converted_price = order?.totalLocal * 100;
 
   if (orderError || !order) {
+    logger.error({ orderError }, 'Ordr not found');
     return res.status(404).json({ message: 'Order not found' });
   }
 
@@ -66,6 +67,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
 
   if (rpcError) {
     if (rpcError.message.includes('OUT_OF_STOCK')) {
+      logger.info('OUT OF STOCK');
       return res
         .status(400)
         .json({ message: 'One or more items are out of stock' });
@@ -97,7 +99,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
       .single();
 
     if (updatedOrderError) {
-      const restoreError = await supabase.rpc(
+      const { error: restoreError } = await supabase.rpc(
         'increment_inventory_on_restore',
         { p_order_id: order_id },
       );
@@ -107,6 +109,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
           'CRITICAL: inventory restore failed',
         );
       }
+      logger.error({ updatedOrderError }, 'unable to make order');
       return res.status(500).json({ message: 'Unable to make order' });
     }
 
@@ -116,9 +119,12 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
       paymentIntent_id: paymentIntent.id,
     });
   } catch (err) {
-    const restoreError = await supabase.rpc('increment_inventory_on_restore', {
-      p_order_id: order_id,
-    });
+    const { error: restoreError } = await supabase.rpc(
+      'increment_inventory_on_restore',
+      {
+        p_order_id: order_id,
+      },
+    );
     if (restoreError) {
       logger.error(
         { error: restoreError },
@@ -136,14 +142,15 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
   }
   const paymentIntent_id = req.params.paymentIntent_id as string;
 
-  const { data: order, error } = await supabase
+  const { data: order, error: orderError } = await supabase
     .from('order')
     .select('status,paymentIntent_id,id,cart_id')
     .eq('paymentIntent_id', paymentIntent_id)
     .eq('user_id', req.user.id)
     .single();
 
-  if (error || !order) {
+  if (orderError || !order) {
+    logger.error({ orderError }, 'Order not found');
     return res.status(404).json({ message: 'Order not found' });
   }
 
@@ -160,18 +167,19 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         .single();
 
       if (updated_order_error) {
+        logger.error({ updated_order_error }, 'Unable to verify order');
         return res.status(500).json({ message: 'Unable to verify order' });
       }
 
       try {
         await handlePostPayment(order.id, order.cart_id);
-      } catch (_err) {
+      } catch (err) {
         // rollback the status so stripe can safely retry
         await supabase
           .from('order')
           .update({ status: 'pending' })
           .eq('id', order.id);
-
+        logger.error({ err }, 'post payment error');
         return res
           .status(500)
           .json({ message: 'network error, please reload the page' });
@@ -204,10 +212,11 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         .single();
 
       if (updated_order_error) {
+        logger.error({ updated_order_error }, 'unable to verify order');
         return res.status(500).json({ message: 'Unable to verify order' });
       }
 
-      const restoreError = await supabase.rpc(
+      const { error: restoreError } = await supabase.rpc(
         'increment_inventory_on_restore',
         {
           p_order_id: order.id,
