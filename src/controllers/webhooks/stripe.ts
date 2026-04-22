@@ -32,12 +32,16 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       .single();
 
     if (!order || orderError) {
+      logger.error({ orderError }, 'Already processed');
       return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
     }
 
-    const restoreError = await supabase.rpc('increment_inventory_on_restore', {
-      p_order_id: orderId,
-    });
+    const { error: restoreError } = await supabase.rpc(
+      'increment_inventory_on_restore',
+      {
+        p_order_id: orderId,
+      },
+    );
     if (restoreError) {
       logger.error(
         { error: restoreError },
@@ -58,12 +62,13 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   }
 
   if (event.type !== 'payment_intent.succeeded') {
+    logger.info('event ignored');
     return res.status(200).json({ message: 'Event ignored' });
   }
 
   const paymentIntent_id = event.data.object.id;
 
-  const { data: updatedOrder, error } = await supabase
+  const { data: updatedOrder, error: updatedOrderError } = await supabase
     .from('order')
     .update({ status: 'success' })
     .eq('paymentIntent_id', paymentIntent_id)
@@ -74,19 +79,20 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     .select('id, cart_id')
     .single();
 
-  if (error || !updatedOrder) {
+  if (updatedOrderError || !updatedOrder) {
+    logger.error({ updatedOrderError }, 'Already processed');
     return res.status(200).json({ message: 'Already processed' });
   }
 
   try {
     await handlePostPayment(updatedOrder.id, updatedOrder.cart_id);
-  } catch (_err) {
+  } catch (err) {
     // rollback the status so Stripe can safely retry
     await supabase
       .from('order')
       .update({ status: 'pending' })
       .eq('id', updatedOrder.id);
-
+    logger.error({ err }, 'Post payment failed, retrying');
     return res.status(500).json({ message: 'Post payment failed, retrying' });
   }
 

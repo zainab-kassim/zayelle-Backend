@@ -77,6 +77,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   }
 
   if (event.event !== 'charge.success') {
+    logger.info('Event ignored');
     return res.status(200).json({ message: 'Event ignored' }); // always 200 to stop retries
   }
 
@@ -95,18 +96,19 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       .single();
 
   if (updatedorderstatuserror || !updatedorderstatus) {
+    logger.error({ updatedorderstatuserror }, 'Payment already processed');
     return res.status(200).json({ message: 'Payment already processed' });
   }
 
   try {
     await handlePostPayment(updatedorderstatus.id, updatedorderstatus.cart_id);
-  } catch (_err) {
+  } catch (err) {
     // rollback the status so paystack can safely retry
     await supabase
       .from('order')
       .update({ status: 'pending' })
       .eq('id', updatedorderstatus.id);
-
+    logger.error({ err }, 'Post payment failed, retrying');
     return res.status(500).json({ message: 'Post payment failed, retrying' });
   }
 
