@@ -10,12 +10,11 @@ export const initializePayment = async (req: Request, res: Response) => {
   }
 
   const email = req.user.email;
-  const currency = req.currency;
 
   const { order_id } = req.body;
   const { data: order, error: orderError } = await supabase
     .from('order')
-    .select('totalLocal,reference')
+    .select('totalLocal,reference,currency')
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .single();
@@ -24,6 +23,7 @@ export const initializePayment = async (req: Request, res: Response) => {
     logger.error({ orderError }, 'Order not found');
     return res.status(404).json({ message: 'Order not found' });
   }
+  const currency = order.currency;
 
   if (order.reference) {
     const response = await axios.get(
