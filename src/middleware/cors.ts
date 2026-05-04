@@ -1,7 +1,10 @@
 import cors from 'cors';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export const corsMiddleware = cors({
-  origin: '*',
+  origin: process.env.FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
   credentials: true, // Allow cookies to be sent
   allowedHeaders: ['Content-Type', 'Authorization'], // Allow specific headers
