@@ -24,7 +24,7 @@ export const UserSignup = async (req: Request, res: Response) => {
     .single();
 
   if (existingUser) {
-    return res.status(200).json({
+    return res.status(409).json({
       message: 'Account already exists. Please log in instead.',
     });
   }
