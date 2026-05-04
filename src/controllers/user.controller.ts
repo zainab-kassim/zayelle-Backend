@@ -29,7 +29,7 @@ export const UserSignup = async (req: Request, res: Response) => {
     });
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   const { data: newUser, error: newUserError } = await supabase
     .from('users')
