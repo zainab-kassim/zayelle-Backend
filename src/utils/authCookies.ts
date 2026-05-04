@@ -8,7 +8,7 @@ export function SetAccessTokenCookieOptions(
   res.cookie('accessToken', accessToken, {
     sameSite: 'strict',
     path: '/',
-    secure: false,
+    secure: true,
     httpOnly: true,
     maxAge: 20 * 60 * 1000, // 20 minutes
   });
@@ -24,7 +24,7 @@ export function SetRefreshTokenCookieOptions(
   res.cookie('refreshToken', refreshToken, {
     sameSite: 'strict',
     path: '/',
-    secure: false,
+    secure: true,
     httpOnly: true,
     maxAge: sevenDaysInMs - bufferTimeInMs,
   });
@@ -34,7 +34,7 @@ export function RemoveAccessTokenCookieOptions(res: Response) {
   res.clearCookie('accessToken', {
     sameSite: 'strict',
     path: '/',
-    secure: false,
+    secure: true,
     httpOnly: true,
   });
 }
@@ -43,7 +43,7 @@ export function RemoveRefreshTokenCookieOptions(res: Response) {
   res.clearCookie('refreshToken', {
     path: '/',
     sameSite: 'strict',
-    secure: false,
+    secure: true,
     httpOnly: true,
   });
 }
