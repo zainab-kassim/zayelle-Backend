@@ -56,6 +56,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   const convertedProductCollection = CollectionProducts.map((collection) => ({
     ...collection,
     price: collection.price * rate,
+    currency,
   }));
 
   res.status(200).json({
