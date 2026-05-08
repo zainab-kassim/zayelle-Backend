@@ -59,6 +59,13 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
     currency,
   }));
 
+  if (producterror || !CollectionProducts) {
+    logger.error({ producterror }, 'Error fetching products for collection');
+    return res.status(500).json({
+      message: 'Error fetching products for collection',
+    });
+  }
+
   res.status(200).json({
     message: 'Products fetched successfully for collection',
     products: convertedProductCollection,
