@@ -69,6 +69,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   res.status(200).json({
     message: 'Products fetched successfully for collection',
     products: convertedProductCollection,
+    currency,
   });
 };
 

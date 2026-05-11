@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import logger from './logger';
 
 const SUPPORTED_CURRENCIES = ['USD', 'GBP', 'CAD', 'NGN'];
 
@@ -26,6 +27,7 @@ export const currencyMiddleware = async (
 
   try {
     const ip = req.ip as string;
+    logger.info({ ip }, 'Detecting currency for IP');
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const cached = ipCache.get(ip);
 
