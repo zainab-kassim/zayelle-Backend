@@ -37,7 +37,7 @@ export const currencyMiddleware = async (
       return next();
     }
 
-    const geo = await fetch(`https://free.freeipapi.com/api/json`);
+    const geo = await fetch(`https://free.freeipapi.com/api/json/${ip}`);
     const data = await geo.json();
 
     logger.info({ data }, 'Geolocation API response');
