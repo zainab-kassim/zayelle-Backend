@@ -37,7 +37,7 @@ export const currencyMiddleware = async (
       return next();
     }
 
-    const geo = await fetch(`https://free.freeipapi.com/api/json/${ip}`);
+    const geo = await fetch(`https://free.freeipapi.com/api/json`);
     const data = await geo.json();
 
     const currencyfromIp = data.currencies?.[0]?.toUpperCase();
