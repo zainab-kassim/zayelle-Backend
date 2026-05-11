@@ -41,6 +41,7 @@ export const currencyMiddleware = async (
     const data = await geo.json();
 
     const currencyfromIp = data.currencies?.[0]?.toUpperCase();
+    logger.info({ ip, currencyfromIp }, 'Currency detected from IP');
 
     const detectedCurrency = SUPPORTED_CURRENCIES.includes(currencyfromIp)
       ? currencyfromIp
