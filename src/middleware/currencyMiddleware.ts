@@ -26,9 +26,9 @@ export const currencyMiddleware = async (
   }
 
   try {
-    const ip =
-      req.headers['x-forwarded-for']?.toString().split(',')[0] ||
-      (req.ip as string);
+    const ip = req.headers['x-forwarded-for']
+      ?.toString()
+      .split(',')[0] as string;
     logger.info({ ip }, 'Detecting currency for IP');
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     const cached = ipCache.get(ip);
