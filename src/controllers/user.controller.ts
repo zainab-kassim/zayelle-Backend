@@ -159,16 +159,16 @@ export const UserLogin = async (req: Request, res: Response) => {
 };
 
 export const UserLogout = async (req: Request, res: Response) => {
-  if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
-  }
-  const { data: _session, error: sessionError } = await supabaseAdmin
-    .from('sessions')
-    .delete()
-    .eq('user_id', req.user.id);
+  if (req.user) {
+    const { data: _session, error: sessionError } = await supabaseAdmin
+      .from('sessions')
+      .delete()
+      .eq('user_id', req.user.id);
 
-  if (sessionError) {
-    return res.status(500).json({ message: 'Something went wrong' });
+    if (sessionError) {
+      logger.error({ sessionError }, 'Error logging out user');
+      return res.status(500).json({ message: 'Something went wrong' });
+    }
   }
   RemoveAccessTokenCookieOptions(res);
   RemoveRefreshTokenCookieOptions(res);
