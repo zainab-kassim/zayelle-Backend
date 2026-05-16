@@ -173,7 +173,7 @@ export const UserLogout = async (req: Request, res: Response) => {
   RemoveAccessTokenCookieOptions(res);
   RemoveRefreshTokenCookieOptions(res);
 
-  return res.status(200).json({ message: 'user logged out successfully' });
+  return res.status(200).json({ message: 'User logged out successfully' });
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
