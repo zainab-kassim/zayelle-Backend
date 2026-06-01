@@ -16,6 +16,7 @@ import { throttle, strictThrottle } from './middleware/throttle';
 import helmet from 'helmet';
 import logger from './middleware/logger';
 import { cleanupJob } from './jobs/cleanup';
+import currencyRoutes from './routes/currency.routes';
 
 const PORT = 4000;
 
@@ -58,6 +59,9 @@ app.use(currencyMiddleware);
 
 // Start the cleanup job to run daily at midnight
 cleanupJob.start();
+
+// Middleware to use currency routes
+app.use('/api/currency', currencyRoutes);
 
 // Middleware to use user routes
 app.use('/api/auth', throttle, userRoutes);
