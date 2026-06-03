@@ -1,15 +1,13 @@
 import { Response } from 'express';
 
-const isProduction = false;
-
 export function SetAccessTokenCookieOptions(
   res: Response,
   accessToken: string,
 ) {
   res.cookie('accessToken', accessToken, {
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: 'lax',
     path: '/',
-    secure: isProduction,
+    secure: true,
     httpOnly: true,
     maxAge: 20 * 60 * 1000,
   });
@@ -23,9 +21,9 @@ export function SetRefreshTokenCookieOptions(
   const bufferTimeInMs = 60 * 60 * 1000;
 
   res.cookie('refreshToken', refreshToken, {
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: 'lax',
     path: '/',
-    secure: isProduction,
+    secure: true,
     httpOnly: true,
     maxAge: sevenDaysInMs - bufferTimeInMs,
   });
@@ -33,9 +31,9 @@ export function SetRefreshTokenCookieOptions(
 
 export function RemoveAccessTokenCookieOptions(res: Response) {
   res.clearCookie('accessToken', {
-    sameSite: isProduction ? 'strict' : 'lax',
+    sameSite: 'lax',
     path: '/',
-    secure: isProduction,
+    secure: true,
     httpOnly: true,
   });
 }
@@ -43,8 +41,8 @@ export function RemoveAccessTokenCookieOptions(res: Response) {
 export function RemoveRefreshTokenCookieOptions(res: Response) {
   res.clearCookie('refreshToken', {
     path: '/',
-    sameSite: isProduction ? 'strict' : 'lax',
-    secure: isProduction,
+    sameSite: 'lax',
+    secure: true,
     httpOnly: true,
   });
 }
