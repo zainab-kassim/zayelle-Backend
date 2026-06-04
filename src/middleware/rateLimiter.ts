@@ -8,7 +8,7 @@ const limiter = new RateLimiterMemory({
 
 //for auth routes
 const authlimiter = new RateLimiterMemory({
-  points: 7,
+  points: 10,
   duration: 60,
 });
 

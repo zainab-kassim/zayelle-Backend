@@ -3,10 +3,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export const corsMiddleware = cors({
-  origin: process.env.FRONTEND_URL, // Allow requests from this origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed HTTP methods
-  credentials: true, // Allow cookies to be sent
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-currency'], // Allow specific headers
-  optionsSuccessStatus: 200, // some legacy browsers (IE11, various SmartTVs) choke on 204
+  origin: isProduction ? process.env.FRONTEND_URL : process.env.LOCAL_URL,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-currency'],
+  optionsSuccessStatus: 200,
 });
