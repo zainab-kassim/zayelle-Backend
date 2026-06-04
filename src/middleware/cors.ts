@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const isProduction = process.env.NODE_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'Production';
 
 export const corsMiddleware = cors({
   origin: isProduction ? process.env.FRONTEND_URL : process.env.LOCAL_URL,
