@@ -1,14 +1,16 @@
 import { Response } from 'express';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export function SetAccessTokenCookieOptions(
   res: Response,
   accessToken: string,
 ) {
   res.cookie('accessToken', accessToken, {
-    sameSite: 'lax',
-    path: '/',
-    secure: true,
     httpOnly: true,
+    path: '/',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: 20 * 60 * 1000,
   });
 }
@@ -21,28 +23,28 @@ export function SetRefreshTokenCookieOptions(
   const bufferTimeInMs = 60 * 60 * 1000;
 
   res.cookie('refreshToken', refreshToken, {
-    sameSite: 'lax',
-    path: '/',
-    secure: true,
     httpOnly: true,
+    path: '/',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
     maxAge: sevenDaysInMs - bufferTimeInMs,
   });
 }
 
 export function RemoveAccessTokenCookieOptions(res: Response) {
   res.clearCookie('accessToken', {
-    sameSite: 'lax',
-    path: '/',
-    secure: true,
     httpOnly: true,
+    path: '/',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
   });
 }
 
 export function RemoveRefreshTokenCookieOptions(res: Response) {
   res.clearCookie('refreshToken', {
-    path: '/',
-    sameSite: 'lax',
-    secure: true,
     httpOnly: true,
+    path: '/',
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
   });
 }
