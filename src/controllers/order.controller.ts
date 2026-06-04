@@ -54,7 +54,7 @@ export const createorder = async (req: Request, res: Response) => {
       state,
       postal_code,
       country,
-      totalLocal: total_price * rate,
+      totalLocal: parseFloat((total_price * rate).toFixed(2)),
       rate,
       currency: req.currency,
     })
@@ -152,10 +152,18 @@ export const getOrder = async (req: Request, res: Response) => {
     .eq('user_id', req.user.id)
     .single();
 
+  const formattedOrder = {
+    ...order,
+    order_items: order.order_items.map((item: { price: number }) => ({
+      ...item,
+      price: parseFloat(item.price.toFixed(2)),
+    })),
+  };
+
   if (orderError || !order) {
     logger.error({ orderError }, 'Order not found');
     return res.status(404).json({ message: 'Order not found' });
   }
 
-  return res.status(200).json({ order });
+  return res.status(200).json({ order: formattedOrder });
 };

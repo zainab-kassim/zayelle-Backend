@@ -144,7 +144,7 @@ export const addtocart = async (req: Request, res: Response) => {
   return res.status(200).json({
     message: 'Item added to new cart successfully',
     cartitem,
-    localprice: cartitem.price * rate,
+    localprice: parseFloat((cartitem.price * rate).toFixed(2)),
     currency,
   });
 };
@@ -192,7 +192,7 @@ export const updatecartquantity = async (req: Request, res: Response) => {
   return res.status(200).json({
     message: 'quantity updated successfully',
     updatedCartItem,
-    localprice: updatedCartItem.price * rate,
+    localprice: parseFloat((updatedCartItem.price * rate).toFixed(2)),
     currency,
   });
 };
@@ -262,7 +262,7 @@ export const getcart = async (req: Request, res: Response) => {
 
   const convertedItems = cartitems.map((item) => ({
     ...item,
-    price: item.price * rate,
+    price: parseFloat((item.price * rate).toFixed(2)),
   }));
 
   const total_price = cartitems.reduce((sum, item) => sum + item.price, 0);
@@ -270,7 +270,7 @@ export const getcart = async (req: Request, res: Response) => {
   return res.status(200).json({
     message: 'Cart items retrieved successfully',
     cartitems: convertedItems,
-    totalLocal: total_price * rate,
+    totalLocal: parseFloat((total_price * rate).toFixed(2)),
     total_price,
     currency,
     firstname: existingcart.user_id.firstname,

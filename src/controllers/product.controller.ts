@@ -19,7 +19,7 @@ export const GetProducts = async (req: Request, res: Response) => {
   }
   const convertedProducts = products.map((product) => ({
     ...product,
-    price: product.price * rate,
+    price: parseFloat((product.price * rate).toFixed(2)),
   }));
 
   res
@@ -55,7 +55,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   }
   const convertedProductCollection = CollectionProducts.map((collection) => ({
     ...collection,
-    price: collection.price * rate,
+    price: parseFloat((collection.price * rate).toFixed(2)),
     currency,
   }));
 
@@ -90,7 +90,7 @@ export const GetProductByName = async (req: Request, res: Response) => {
 
   const convertedProduct = product.map((product) => ({
     ...product,
-    price: product.price * rate,
+    price: parseFloat((product.price * rate).toFixed(2)),
   }));
 
   res.status(200).json({
