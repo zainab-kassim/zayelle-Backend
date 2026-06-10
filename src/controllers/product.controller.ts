@@ -11,10 +11,20 @@ export const GetProducts = async (req: Request, res: Response) => {
 
   const { data: products, error: productError } = await supabase
     .from('products')
-    .select('name,slug,description,price,size,quantity,image');
+    .select(
+      'name, slug, description, price, size, quantity, image, collections(slug)',
+    );
 
   if (productError) {
-    logger.error({ productError }, 'Error fetching products');
+    logger.error(
+      {
+        productError: {
+          message: productError.message,
+          details: productError.details,
+        },
+      },
+      'Error fetching products',
+    );
     return res.status(500).json({ message: 'Error fetching products' });
   }
   const convertedProducts = products.map((product) => ({
