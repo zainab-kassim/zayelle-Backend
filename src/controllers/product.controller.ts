@@ -87,12 +87,14 @@ export const GetProductByName = async (req: Request, res: Response) => {
   const currency = req.currency;
   const rates = await getCachedRates();
   const rate = getRate(rates, currency);
-  const productName = req.params.slug;
+  const Slug = req.params.slug;
 
   const { data: product, error: productError } = await supabase
     .from('products')
-    .select('id,name,slug,description,price,size,quantity,image')
-    .ilike('slug', `%${productName}%`);
+    .select(
+      'id,name,slug,description,price,size,quantity,image,collections(name)',
+    )
+    .ilike('slug', `%${Slug}%`);
   if (productError || !product) {
     logger.error({ productError }, 'Product not found');
     return res.status(404).json({ message: 'Product not found' });
