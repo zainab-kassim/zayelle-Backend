@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 
 export const BookMeeting = async (req: Request, res: Response) => {
-  const { Username, date, time, UserEmail } = req.body;
+  const { Username, Date, Time, UserEmail } = req.body;
 
   const makeRes = await fetch(process.env.MAKE_WEBHOOK_URL!, {
     method: 'POST',
@@ -9,7 +9,7 @@ export const BookMeeting = async (req: Request, res: Response) => {
       'Content-Type': 'application/json',
       'x-make-apikey': process.env.MAKE_API_KEY!,
     },
-    body: JSON.stringify({ Username, date, time, UserEmail }),
+    body: JSON.stringify({ Username, Date, Time, UserEmail }),
   });
 
   const result = await makeRes.json();
