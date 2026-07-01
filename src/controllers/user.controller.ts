@@ -137,7 +137,7 @@ export const UserLogin = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       message: 'user logged in successfully',
-      user: { firstname: user.firstname },
+      user: { firstname: user.firstname, email: user.email },
     });
   }
 
@@ -154,7 +154,7 @@ export const UserLogin = async (req: Request, res: Response) => {
 
   res.status(200).json({
     message: 'user logged in successfully',
-    user: { firstname: user.firstname },
+    user: { firstname: user.firstname, email: user.email },
   });
 };
 
