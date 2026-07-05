@@ -252,7 +252,7 @@ export const getcart = async (req: Request, res: Response) => {
   }
   const { data: cartitems, error: cartitemserror } = await supabase
     .from('cart_items')
-    .select(`*,product_id(name,slug,image,description)`)
+    .select(`*,product:product_id(name,slug,image,description,color)`)
     .eq('cart_id', existingcart.id);
 
   if (cartitemserror) {
@@ -263,16 +263,11 @@ export const getcart = async (req: Request, res: Response) => {
   const convertedItems = cartitems.map((item) => ({
     ...item,
     price: parseFloat((item.price * rate).toFixed(2)),
+    unitprice: parseFloat((item.unitprice * rate).toFixed(2)),
   }));
-
-  const total_price = cartitems.reduce((sum, item) => sum + item.price, 0);
 
   return res.status(200).json({
     message: 'Cart items retrieved successfully',
     cartitems: convertedItems,
-    totalLocal: parseFloat((total_price * rate).toFixed(2)),
-    total_price,
-    currency,
-    firstname: existingcart.user_id.firstname,
   });
 };
