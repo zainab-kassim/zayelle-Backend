@@ -11,6 +11,7 @@ export function SetAccessTokenCookieOptions(
     path: '/',
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
+    partitioned: isProduction,
     maxAge: 20 * 60 * 1000,
   });
 }
@@ -27,6 +28,7 @@ export function SetRefreshTokenCookieOptions(
     path: '/',
     secure: isProduction,
     sameSite: isProduction ? 'none' : 'lax',
+    partitioned: isProduction,
     maxAge: sevenDaysInMs - bufferTimeInMs,
   });
 }
