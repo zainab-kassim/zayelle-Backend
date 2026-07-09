@@ -10,7 +10,7 @@ export function SetAccessTokenCookieOptions(
     httpOnly: true,
     path: '/',
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: 'lax',
     partitioned: isProduction,
     maxAge: 20 * 60 * 1000,
   });
@@ -27,7 +27,7 @@ export function SetRefreshTokenCookieOptions(
     httpOnly: true,
     path: '/',
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: 'lax',
     partitioned: isProduction,
     maxAge: sevenDaysInMs - bufferTimeInMs,
   });
@@ -38,7 +38,7 @@ export function RemoveAccessTokenCookieOptions(res: Response) {
     httpOnly: true,
     path: '/',
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: 'lax',
   });
 }
 
@@ -47,6 +47,6 @@ export function RemoveRefreshTokenCookieOptions(res: Response) {
     httpOnly: true,
     path: '/',
     secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: 'lax',
   });
 }
