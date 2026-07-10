@@ -201,7 +201,8 @@ export const deletecartitem = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const cartitemid = req.body.cartitemid;
+
+  const cartitemid = req.params.id;
 
   const { data: cart, error: carterror } = await supabase
     .from('carts')

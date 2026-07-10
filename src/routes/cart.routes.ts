@@ -9,7 +9,6 @@ import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
 import { validateUser } from '../middleware/validate';
 import { addToCartSchema } from '../schemas/create.cart.schema';
-import { deteleCartItemSchema } from '../schemas/delete.cartitem.schema';
 import { updateQuantitySchema } from '../schemas/updatequantity.cartitem.schema';
 import { cartLimiter } from '../middleware/consume';
 
@@ -23,10 +22,9 @@ router.post(
   handleAsyncErr(addtocart),
 );
 router.delete(
-  '/deletecartitem',
+  '/deletecartitem/:id',
   isLoggedIn,
   cartLimiter,
-  validateUser(deteleCartItemSchema),
   handleAsyncErr(deletecartitem),
 );
 router.put(
