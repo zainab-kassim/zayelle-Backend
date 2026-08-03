@@ -10,7 +10,7 @@ export const initializePayment = async (req: Request, res: Response) => {
   }
 
   const email = req.user.email;
-
+  console.log(req.body);
   const { order_id } = req.body;
   const { data: order, error: orderError } = await supabase
     .from('order')
@@ -78,6 +78,10 @@ export const initializePayment = async (req: Request, res: Response) => {
 
   const converted_price = order.totalLocal * 100;
   const reference = `ZAYELLE_${order_id}_`;
+  const isProduction = process.env.NODE_ENV === 'Production';
+  const frontendUrl = isProduction
+    ? process.env.FRONTEND_URL
+    : process.env.LOCAL_URL;
 
   try {
     const response = await axios.post(
@@ -86,6 +90,7 @@ export const initializePayment = async (req: Request, res: Response) => {
         email,
         amount: converted_price,
         reference,
+        callback_url: `${frontendUrl}/checkout`,
         metadata: {
           orderId: order_id,
           currency,
@@ -173,16 +178,20 @@ export const verifyPayment = async (req: Request, res: Response) => {
     );
 
     if (data.data.status === 'success') {
-      const { error: updated_order_error } = await supabase
+      const { data: updatedOrder, error: updated_order_error } = await supabase
         .from('order')
         .update({ status: 'success' })
         .eq('reference', reference)
         .eq('user_id', req.user.id)
+        .eq('status', 'pending')
+        .select('id')
         .single();
 
-      if (updated_order_error) {
-        logger.error({ updated_order_error }, 'Unable to verify order');
-        return res.status(500).json({ message: 'Unable to verify order' });
+      if (updated_order_error || !updatedOrder) {
+        // webhook already processed this order first, nothing left to do
+        return res
+          .status(200)
+          .json({ message: 'Payment successful', status: 'success' });
       }
 
       try {
@@ -212,16 +221,21 @@ export const verifyPayment = async (req: Request, res: Response) => {
     }
 
     if (data.data.status === 'failed' || data.data.status === 'abandoned') {
-      const { error: updated_order_error } = await supabase
+      const { data: updatedOrder, error: updated_order_error } = await supabase
         .from('order')
         .update({ status: `${data.data.status}` })
         .eq('reference', reference)
         .eq('user_id', req.user.id)
+        .eq('status', 'pending')
+        .select('id')
         .single();
 
-      if (updated_order_error) {
-        logger.error({ updated_order_error }, 'Unable to verify order');
-        return res.status(500).json({ message: 'Unable to verify order' });
+      if (updated_order_error || !updatedOrder) {
+        // webhook already processed this order first, nothing left to do
+        return res.status(400).json({
+          message: 'Payment failed or expired',
+          status: 'failed',
+        });
       }
 
       const { error: restoreError } = await supabase.rpc(
