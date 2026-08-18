@@ -39,6 +39,7 @@ export function RemoveAccessTokenCookieOptions(res: Response) {
     path: '/',
     secure: isProduction,
     sameSite: 'lax',
+    partitioned: isProduction,
   });
 }
 
@@ -48,5 +49,6 @@ export function RemoveRefreshTokenCookieOptions(res: Response) {
     path: '/',
     secure: isProduction,
     sameSite: 'lax',
+    partitioned: isProduction,
   });
 }
