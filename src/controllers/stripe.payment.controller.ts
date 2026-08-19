@@ -159,16 +159,20 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
       await stripe.paymentIntents.retrieve(paymentIntent_id);
 
     if (paymentIntent.status === 'succeeded') {
-      const { error: updated_order_error } = await supabase
+      const { data: updatedOrder, error: updated_order_error } = await supabase
         .from('order')
         .update({ status: 'success' })
         .eq('paymentIntent_id', paymentIntent_id)
         .eq('user_id', req.user.id)
+        .eq('status', 'pending')
+        .select('id')
         .single();
 
-      if (updated_order_error) {
-        logger.error({ updated_order_error }, 'Unable to verify order');
-        return res.status(500).json({ message: 'Unable to verify order' });
+      if (updated_order_error || !updatedOrder) {
+        // webhook already processed this order first, nothing left to do
+        return res
+          .status(200)
+          .json({ message: 'Payment successful', status: 'success' });
       }
 
       try {
@@ -204,16 +208,21 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
     }
 
     if (paymentIntent.status === 'canceled') {
-      const { error: updated_order_error } = await supabase
+      const { data: updatedOrder, error: updated_order_error } = await supabase
         .from('order')
         .update({ status: 'canceled' })
         .eq('paymentIntent_id', paymentIntent_id)
         .eq('user_id', req.user.id)
+        .eq('status', 'pending')
+        .select('id')
         .single();
 
-      if (updated_order_error) {
-        logger.error({ updated_order_error }, 'unable to verify order');
-        return res.status(500).json({ message: 'Unable to verify order' });
+      if (updated_order_error || !updatedOrder) {
+        // webhook already processed this order first, nothing left to do
+        return res.status(400).json({
+          message: 'Payment failed or expired',
+          status: 'canceled',
+        });
       }
 
       const { error: restoreError } = await supabase.rpc(
