@@ -8,50 +8,45 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-02-25.clover',
 });
 
-export const createPaymentIntent = async (req: Request, res: Response) => {
+export const createCheckoutSession = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
   const { order_id } = req.body;
   const { data: order, error: orderError } = await supabase
     .from('order')
-    .select('totalLocal,currency,paymentIntent_id')
+    .select('totalLocal,currency,checkoutSession_id')
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .single();
 
-  const converted_price = order?.totalLocal * 100;
-
   if (orderError || !order) {
-    logger.error({ orderError }, 'Ordr not found');
+    logger.error({ orderError }, 'Order not found');
     return res.status(404).json({ message: 'Order not found' });
   }
 
-  if (order.paymentIntent_id) {
-    const paymentIntent = await stripe.paymentIntents.retrieve(
-      order.paymentIntent_id,
+  const converted_price = order.totalLocal * 100;
+
+  if (order.checkoutSession_id) {
+    const session = await stripe.checkout.sessions.retrieve(
+      order.checkoutSession_id,
     );
 
-    if (paymentIntent.status === 'succeeded') {
+    if (session.payment_status === 'paid') {
       return res
         .status(200)
         .json({ message: 'Payment already successful', status: 'success' });
     }
 
-    if (
-      paymentIntent.status === 'requires_payment_method' ||
-      paymentIntent.status === 'requires_confirmation' ||
-      paymentIntent.status === 'requires_action' ||
-      paymentIntent.status === 'processing'
-    ) {
+    if (session.status === 'open') {
       return res.status(200).json({
         message: 'Payment already initialized',
-        client_secret: paymentIntent.client_secret, // used on frontend to confirm payment
+        url: session.url, // used on frontend to redirect to Stripe Checkout
         status: 'pending',
       });
     }
 
-    if (paymentIntent.status === 'canceled') {
+    if (session.status === 'expired') {
       return res.status(400).json({
         message: 'This order has expired, please start a new checkout',
       });
@@ -79,12 +74,33 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Failed to process inventory' });
   }
 
+  const isProduction = process.env.NODE_ENV === 'Production';
+  const frontendUrl = isProduction
+    ? process.env.FRONTEND_URL
+    : process.env.LOCAL_URL;
+
   try {
-    const paymentIntent = await stripe.paymentIntents.create(
+    const session = await stripe.checkout.sessions.create(
       {
-        amount: converted_price,
-        currency: order.currency.toLowerCase(),
+        mode: 'payment',
+        payment_method_types: ['card'],
+        customer_email: req.user.email,
+        line_items: [
+          {
+            price_data: {
+              currency: order.currency.toLowerCase(),
+              product_data: { name: `Zayelle order #${order_id}` },
+              unit_amount: converted_price,
+            },
+            quantity: 1,
+          },
+        ],
+        success_url: `${frontendUrl}/checkout?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${frontendUrl}/checkout`,
         metadata: { order_id },
+        // the webhook is subscribed to payment_intent.* events, not checkout.session.*,
+        // so the underlying PaymentIntent needs its own copy of the metadata to match on
+        payment_intent_data: { metadata: { order_id } },
       },
       {
         idempotencyKey: `order_${order_id}`,
@@ -93,7 +109,7 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
 
     const { error: updatedOrderError } = await supabase
       .from('order')
-      .update({ paymentIntent_id: paymentIntent.id })
+      .update({ checkoutSession_id: session.id })
       .eq('id', order_id)
       .eq('user_id', req.user.id)
       .single();
@@ -115,8 +131,8 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
 
     return res.status(200).json({
       message: 'Payment initialized successfully',
-      client_secret: paymentIntent.client_secret,
-      paymentIntent_id: paymentIntent.id,
+      url: session.url,
+      session_id: session.id,
     });
   } catch (err) {
     const { error: restoreError } = await supabase.rpc(
@@ -136,16 +152,16 @@ export const createPaymentIntent = async (req: Request, res: Response) => {
   }
 };
 
-export const verifyStripePayment = async (req: Request, res: Response) => {
+export const verifyCheckoutSession = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  const paymentIntent_id = req.params.paymentIntent_id as string;
+  const session_id = req.params.session_id as string;
 
   const { data: order, error: orderError } = await supabase
     .from('order')
-    .select('status,paymentIntent_id,id,cart_id')
-    .eq('paymentIntent_id', paymentIntent_id)
+    .select('status,checkoutSession_id,id,cart_id')
+    .eq('checkoutSession_id', session_id)
     .eq('user_id', req.user.id)
     .single();
 
@@ -155,14 +171,13 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
   }
 
   if (order.status === 'pending') {
-    const paymentIntent =
-      await stripe.paymentIntents.retrieve(paymentIntent_id);
+    const session = await stripe.checkout.sessions.retrieve(session_id);
 
-    if (paymentIntent.status === 'succeeded') {
+    if (session.payment_status === 'paid') {
       const { data: updatedOrder, error: updated_order_error } = await supabase
         .from('order')
         .update({ status: 'success' })
-        .eq('paymentIntent_id', paymentIntent_id)
+        .eq('checkoutSession_id', session_id)
         .eq('user_id', req.user.id)
         .eq('status', 'pending')
         .select('id')
@@ -194,24 +209,11 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         .json({ message: 'Payment successful', status: 'success' });
     }
 
-    if (
-      paymentIntent.status === 'requires_payment_method' ||
-      paymentIntent.status === 'requires_confirmation' ||
-      paymentIntent.status === 'requires_action' ||
-      paymentIntent.status === 'processing'
-    ) {
-      return res.status(200).json({
-        message:
-          'verify payment from bank, a confirmation email or code has been sent if required',
-        status: 'pending',
-      });
-    }
-
-    if (paymentIntent.status === 'canceled') {
+    if (session.status === 'expired') {
       const { data: updatedOrder, error: updated_order_error } = await supabase
         .from('order')
         .update({ status: 'canceled' })
-        .eq('paymentIntent_id', paymentIntent_id)
+        .eq('checkoutSession_id', session_id)
         .eq('user_id', req.user.id)
         .eq('status', 'pending')
         .select('id')
@@ -242,6 +244,11 @@ export const verifyStripePayment = async (req: Request, res: Response) => {
         status: 'canceled',
       });
     }
+
+    return res.status(200).json({
+      message: 'verify payment from bank, or complete checkout in Stripe',
+      status: 'pending',
+    });
   }
   return res
     .status(200)

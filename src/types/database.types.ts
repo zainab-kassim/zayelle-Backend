@@ -116,12 +116,12 @@ export type Database = {
         Row: {
           apt_no: string | null;
           cart_id: number | null;
+          checkoutSession_id: string | null;
           city: string | null;
           country: string | null;
           created_at: string;
           currency: string | null;
           id: number;
-          paymentIntent_id: string | null;
           phone_number: string | null;
           postal_code: string | null;
           rate: number | null;
@@ -136,12 +136,12 @@ export type Database = {
         Insert: {
           apt_no?: string | null;
           cart_id?: number | null;
+          checkoutSession_id?: string | null;
           city?: string | null;
           country?: string | null;
           created_at?: string;
           currency?: string | null;
           id?: number;
-          paymentIntent_id?: string | null;
           phone_number?: string | null;
           postal_code?: string | null;
           rate?: number | null;
@@ -156,12 +156,12 @@ export type Database = {
         Update: {
           apt_no?: string | null;
           cart_id?: number | null;
+          checkoutSession_id?: string | null;
           city?: string | null;
           country?: string | null;
           created_at?: string;
           currency?: string | null;
           id?: number;
-          paymentIntent_id?: string | null;
           phone_number?: string | null;
           postal_code?: string | null;
           rate?: number | null;

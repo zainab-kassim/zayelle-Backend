@@ -1,8 +1,8 @@
 import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
 import {
-  createPaymentIntent,
-  verifyStripePayment,
+  createCheckoutSession,
+  verifyCheckoutSession,
 } from '../controllers/stripe.payment.controller';
 import { isLoggedIn } from '../middleware/isLoggedIn';
 import { stripePaymentSchema } from '../schemas/stripe.payment.schema';
@@ -12,17 +12,17 @@ import { paymentLimiter } from '../middleware/consume';
 const router = Router();
 
 router.post(
-  '/create-payment-intent',
+  '/create-checkout-session',
   isLoggedIn,
   paymentLimiter,
   validateUser(stripePaymentSchema),
-  handleAsyncErr(createPaymentIntent),
+  handleAsyncErr(createCheckoutSession),
 );
 router.get(
-  '/verify-payment/:paymentIntent_id',
+  '/verify-payment/:session_id',
   isLoggedIn,
   paymentLimiter,
-  handleAsyncErr(verifyStripePayment),
+  handleAsyncErr(verifyCheckoutSession),
 );
 
 export default router;

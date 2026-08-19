@@ -66,12 +66,11 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     return res.status(200).json({ message: 'Event ignored' });
   }
 
-  const paymentIntent_id = event.data.object.id;
-
+  // order.checkoutSession_id stores the Checkout Session id, not this PaymentIntent's id
+  // (the webhook is subscribed to payment_intent.* events, so match on metadata.order_id instead)
   const { data: updatedOrder, error: updatedOrderError } = await supabase
     .from('order')
     .update({ status: 'success' })
-    .eq('paymentIntent_id', paymentIntent_id)
     .eq('status', 'pending')
     .eq('id', event.data.object.metadata.order_id)
     .eq('currency', event.data.object.currency.toUpperCase())
