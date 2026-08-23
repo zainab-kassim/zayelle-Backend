@@ -23,11 +23,18 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       event.type === 'payment_intent.canceled' ? 'canceled' : 'failed';
     const failureReason = event.data.object.last_payment_error?.code;
 
+    // match on currency/amount too, like the succeeded handler below —
+    // otherwise a stray PaymentIntent event sharing this order_id's metadata
+    // (e.g. an earlier failed attempt) can flip the order before the real
+    // payment_intent.succeeded for THIS charge arrives, and that success
+    // update then silently no-ops since status is no longer 'pending'
     const { data: order, error: orderError } = await supabase
       .from('order')
       .update({ status: status })
       .eq('id', orderId)
       .eq('status', 'pending')
+      .eq('currency', event.data.object.currency.toUpperCase())
+      .eq('totalLocal', event.data.object.amount / 100)
       .select('id')
       .single();
 

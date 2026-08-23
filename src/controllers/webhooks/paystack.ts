@@ -20,11 +20,18 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   if (event.event === 'charge.failed') {
     const orderId = data.metadata.orderId;
 
+    // match on reference/currency/amount too, like charge.success below —
+    // otherwise a stray event sharing this order's metadata can flip the
+    // order before the real charge.success for THIS attempt arrives, and
+    // that success update then silently no-ops since status isn't 'pending'
     const { data: order, error } = await supabase
       .from('order')
       .update({ status: 'failed' })
       .eq('id', orderId)
       .eq('status', 'pending')
+      .eq('reference', data.reference)
+      .eq('currency', data.metadata.currency)
+      .eq('totalLocal', data.amount / 100)
       .select('id')
       .single();
 
@@ -54,6 +61,9 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       .update({ status: 'abandoned' })
       .eq('id', orderId)
       .eq('status', 'pending')
+      .eq('reference', data.reference)
+      .eq('currency', data.metadata.currency)
+      .eq('totalLocal', data.amount / 100)
       .select('id')
       .single();
 

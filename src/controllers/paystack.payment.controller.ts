@@ -255,6 +255,45 @@ export const verifyPayment = async (req: Request, res: Response) => {
       });
     }
   }
+
+  // order already left 'pending', but a stray webhook event (e.g. charge.abandoned
+  // firing around a session timeout) can have flipped it before the real
+  // charge.success landed — re-confirm with Paystack rather than trusting a cached status
+  if (order.status !== 'success') {
+    const { data } = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      },
+    );
+
+    if (data.data.status === 'success') {
+      const { data: updatedOrder, error: updated_order_error } = await supabase
+        .from('order')
+        .update({ status: 'success' })
+        .eq('reference', reference)
+        .eq('user_id', req.user.id)
+        .neq('status', 'success')
+        .select('id')
+        .single();
+
+      if (updatedOrder && !updated_order_error) {
+        try {
+          await handlePostPayment(order.id, order.cart_id);
+        } catch (err) {
+          logger.error({ err }, 'post payment error during reconciliation');
+          return res
+            .status(500)
+            .json({ message: 'network error, please reload the page' });
+        }
+      }
+
+      return res
+        .status(200)
+        .json({ message: 'Payment successful', status: 'success' });
+    }
+  }
+
   return res
     .status(200)
     .json({ message: 'Payment already processed', status: order.status });

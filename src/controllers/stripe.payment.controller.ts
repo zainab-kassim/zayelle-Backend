@@ -250,6 +250,40 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
       status: 'pending',
     });
   }
+
+  // order already left 'pending', but a stray webhook event (e.g. a failed/canceled
+  // PaymentIntent racing the successful one) can have flipped it before the real
+  // success landed — re-confirm with Stripe rather than trusting a cached bad status
+  if (order.status !== 'success') {
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+
+    if (session.payment_status === 'paid') {
+      const { data: updatedOrder, error: updated_order_error } = await supabase
+        .from('order')
+        .update({ status: 'success' })
+        .eq('checkoutSession_id', session_id)
+        .eq('user_id', req.user.id)
+        .neq('status', 'success')
+        .select('id')
+        .single();
+
+      if (updatedOrder && !updated_order_error) {
+        try {
+          await handlePostPayment(order.id, order.cart_id);
+        } catch (err) {
+          logger.error({ err }, 'post payment error during reconciliation');
+          return res
+            .status(500)
+            .json({ message: 'network error, please reload the page' });
+        }
+      }
+
+      return res
+        .status(200)
+        .json({ message: 'Payment successful', status: 'success' });
+    }
+  }
+
   return res
     .status(200)
     .json({ message: 'payment already processed', status: order.status });
