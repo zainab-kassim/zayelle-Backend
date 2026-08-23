@@ -1,7 +1,7 @@
 import {
   createorder,
-  getorderhistory,
-  getOrder,
+  getOrderHistory,
+  getOrderDetails,
   updateshippinginfo,
 } from '../controllers/order.controller';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
@@ -20,7 +20,7 @@ router.post(
   validateUser(createOrderSchema),
   handleAsyncErr(createorder),
 );
-router.get('/orderhistory', isLoggedIn, handleAsyncErr(getorderhistory));
+router.get('/orderhistory', isLoggedIn, handleAsyncErr(getOrderHistory));
 router.post(
   '/edit-shipping-info',
   isLoggedIn,
@@ -30,5 +30,5 @@ router.post(
 );
 // must stay after /orderhistory and /edit-shipping-info so those literal
 // paths aren't swallowed by this param route
-router.get('/:order_id', isLoggedIn, handleAsyncErr(getOrder));
+router.get('/:order_id', isLoggedIn, handleAsyncErr(getOrderDetails));
 export default router;

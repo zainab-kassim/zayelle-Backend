@@ -73,7 +73,7 @@ export const createorder = async (req: Request, res: Response) => {
     .json({ message: 'Order created successfully', order: neworder });
 };
 
-export const getorderhistory = async (req: Request, res: Response) => {
+export const getOrderHistory = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
@@ -150,7 +150,7 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
   });
 };
 
-export const getOrder = async (req: Request, res: Response) => {
+export const getOrderDetails = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
