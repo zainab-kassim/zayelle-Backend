@@ -239,6 +239,17 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
           'CRITICAL: inventory restore failed',
         );
       }
+
+      // still record what was ordered even though payment didn't succeed —
+      // best-effort, doesn't affect the payment status already recorded above
+      try {
+        await handlePostPayment(order.id, order.cart_id, {
+          clearCart: false,
+        });
+      } catch (err) {
+        logger.error({ err }, 'Failed to record order items for expired order');
+      }
+
       return res.status(400).json({
         message: 'Payment failed or expired',
         status: 'canceled',

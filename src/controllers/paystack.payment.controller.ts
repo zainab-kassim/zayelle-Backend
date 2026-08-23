@@ -249,6 +249,17 @@ export const verifyPayment = async (req: Request, res: Response) => {
         );
       }
       logger.error('payment failed');
+
+      // still record what was ordered even though payment didn't succeed —
+      // best-effort, doesn't affect the payment status already recorded above
+      try {
+        await handlePostPayment(order.id, order.cart_id, {
+          clearCart: false,
+        });
+      } catch (err) {
+        logger.error({ err }, 'Failed to record order items for failed order');
+      }
+
       return res.status(400).json({
         message: 'Payment failed or expired',
         status: 'failed',

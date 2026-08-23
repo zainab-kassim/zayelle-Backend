@@ -32,7 +32,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       .eq('reference', data.reference)
       .eq('currency', data.metadata.currency)
       .eq('totalLocal', data.amount / 100)
-      .select('id')
+      .select('id, cart_id')
       .single();
 
     if (!order || error) {
@@ -48,6 +48,15 @@ export const paystackWebhook = async (req: Request, res: Response) => {
         'CRITICAL: inventory restore failed',
       );
     }
+
+    // still record what was ordered even though payment didn't succeed —
+    // best-effort, doesn't affect the payment status already recorded above
+    try {
+      await handlePostPayment(order.id, order.cart_id, { clearCart: false });
+    } catch (err) {
+      logger.error({ err }, 'Failed to record order items for failed order');
+    }
+
     return res
       .status(200)
       .json({ message: 'payment failed', status: 'failed' });
@@ -64,7 +73,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       .eq('reference', data.reference)
       .eq('currency', data.metadata.currency)
       .eq('totalLocal', data.amount / 100)
-      .select('id')
+      .select('id, cart_id')
       .single();
 
     if (!order || error) {
@@ -81,6 +90,15 @@ export const paystackWebhook = async (req: Request, res: Response) => {
         'CRITICAL: inventory restore failed',
       );
     }
+
+    // still record what was ordered even though payment didn't succeed —
+    // best-effort, doesn't affect the payment status already recorded above
+    try {
+      await handlePostPayment(order.id, order.cart_id, { clearCart: false });
+    } catch (err) {
+      logger.error({ err }, 'Failed to record order items for abandoned order');
+    }
+
     return res
       .status(200)
       .json({ message: 'payment session timed out', status: 'abandoned' });

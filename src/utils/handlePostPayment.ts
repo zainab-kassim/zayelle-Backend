@@ -1,7 +1,13 @@
 import { supabase } from '../config/db';
 import logger from '../middleware/logger';
 
-export const handlePostPayment = async (order_id: number, cart_id: number) => {
+export const handlePostPayment = async (
+  order_id: number,
+  cart_id: number,
+  // false for failed/canceled/abandoned orders — still record what was
+  // ordered in order_items, but leave the cart alone so the user can retry
+  { clearCart = true }: { clearCart?: boolean } = {},
+) => {
   // Fetch cart items
   const { data: cartItems, error: cartItemsError } = await supabase
     .from('cart_items')
@@ -35,6 +41,8 @@ export const handlePostPayment = async (order_id: number, cart_id: number) => {
     logger.error({ orderItemsError }, 'Error creating order items');
     throw new Error('Error creating Order items');
   }
+
+  if (!clearCart) return;
 
   // Delete cart items
   const { error: deletedCartItemsError } = await supabase

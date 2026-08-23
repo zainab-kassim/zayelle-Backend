@@ -35,7 +35,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       .eq('status', 'pending')
       .eq('currency', event.data.object.currency.toUpperCase())
       .eq('totalLocal', event.data.object.amount / 100)
-      .select('id')
+      .select('id, cart_id')
       .single();
 
     if (!order || orderError) {
@@ -55,6 +55,15 @@ export const stripeWebhook = async (req: Request, res: Response) => {
         'CRITICAL: inventory restore failed',
       );
     }
+
+    // still record what was ordered even though payment didn't succeed —
+    // best-effort, doesn't affect the payment status already recorded above
+    try {
+      await handlePostPayment(order.id, order.cart_id, { clearCart: false });
+    } catch (err) {
+      logger.error({ err }, 'Failed to record order items for failed order');
+    }
+
     return res
       .status(200)
       .json({ message: 'payment failed', status: status, failureReason });
