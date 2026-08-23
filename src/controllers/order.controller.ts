@@ -78,9 +78,6 @@ export const getOrderHistory = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Unauthorized' });
   }
   const user_id = req.user.id;
-  const currency = req.currency;
-  const rates = await getCachedRates();
-  const rate = getRate(rates, currency);
 
   const { data: orders, error: orderError } = await supabase
     .from('order')
@@ -93,11 +90,13 @@ export const getOrderHistory = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Error fetching order history' });
   }
 
+  // convert item prices with the rate stored on each order (locked in at checkout),
+  // not today's live rate — otherwise these wouldn't match the order's own totalLocal
   const formattedOrders = orders.map((order) => ({
     ...order,
     order_items: order.order_items.map((item: { price: number }) => ({
       ...item,
-      price: parseFloat((item.price * rate).toFixed(2)),
+      price: parseFloat((item.price * order.rate).toFixed(2)),
     })),
   }));
 
@@ -156,9 +155,6 @@ export const getOrderDetails = async (req: Request, res: Response) => {
   }
 
   const { order_id } = req.params;
-  const currency = req.currency;
-  const rates = await getCachedRates();
-  const rate = getRate(rates, currency);
 
   const { data: order, error: orderError } = await supabase
     .from('order')
@@ -172,11 +168,13 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Order not found' });
   }
 
+  // convert with the rate stored on this order (locked in at checkout), not
+  // today's live rate — otherwise these wouldn't match the order's own totalLocal
   const formattedOrder = {
     ...order,
     order_items: order.order_items.map((item: { price: number }) => ({
       ...item,
-      price: parseFloat((item.price * rate).toFixed(2)),
+      price: parseFloat((item.price * order.rate).toFixed(2)),
     })),
   };
 
