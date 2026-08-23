@@ -1,6 +1,7 @@
 import {
   createorder,
   getorderhistory,
+  getOrder,
   updateshippinginfo,
 } from '../controllers/order.controller';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
@@ -27,4 +28,7 @@ router.post(
   validateUser(updateShippingInfoSchema),
   handleAsyncErr(updateshippinginfo),
 );
+// must stay after /orderhistory and /edit-shipping-info so those literal
+// paths aren't swallowed by this param route
+router.get('/:order_id', isLoggedIn, handleAsyncErr(getOrder));
 export default router;

@@ -78,21 +78,33 @@ export const getorderhistory = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Unauthorized' });
   }
   const user_id = req.user.id;
+  const currency = req.currency;
+  const rates = await getCachedRates();
+  const rate = getRate(rates, currency);
 
   const { data: orders, error: orderError } = await supabase
     .from('order')
     .select(`*, order_items(*, product_id(name, slug, image, description))`)
     .eq('user_id', user_id)
-    .contains('status', 'success');
+    .order('created_at', { ascending: false });
 
   if (orderError) {
     logger.error({ orderError }, 'Error fetching order history');
     return res.status(500).json({ message: 'Error fetching order history' });
   }
 
-  return res
-    .status(200)
-    .json({ message: 'Order history fetched successfully', orders });
+  const formattedOrders = orders.map((order) => ({
+    ...order,
+    order_items: order.order_items.map((item: { price: number }) => ({
+      ...item,
+      price: parseFloat((item.price * rate).toFixed(2)),
+    })),
+  }));
+
+  return res.status(200).json({
+    message: 'Order history fetched successfully',
+    orders: formattedOrders,
+  });
 };
 
 export const updateshippinginfo = async (req: Request, res: Response) => {
@@ -144,6 +156,9 @@ export const getOrder = async (req: Request, res: Response) => {
   }
 
   const { order_id } = req.params;
+  const currency = req.currency;
+  const rates = await getCachedRates();
+  const rate = getRate(rates, currency);
 
   const { data: order, error: orderError } = await supabase
     .from('order')
@@ -152,18 +167,18 @@ export const getOrder = async (req: Request, res: Response) => {
     .eq('user_id', req.user.id)
     .single();
 
-  const formattedOrder = {
-    ...order,
-    order_items: order.order_items.map((item: { price: number }) => ({
-      ...item,
-      price: parseFloat(item.price.toFixed(2)),
-    })),
-  };
-
   if (orderError || !order) {
     logger.error({ orderError }, 'Order not found');
     return res.status(404).json({ message: 'Order not found' });
   }
+
+  const formattedOrder = {
+    ...order,
+    order_items: order.order_items.map((item: { price: number }) => ({
+      ...item,
+      price: parseFloat((item.price * rate).toFixed(2)),
+    })),
+  };
 
   return res.status(200).json({ order: formattedOrder });
 };
