@@ -112,35 +112,8 @@ export const UserLogin = async (req: Request, res: Response) => {
     .update(refreshToken)
     .digest('hex');
 
-  const { data: existingSession, error: existingSessionError } =
-    await supabaseAdmin
-      .from('sessions')
-      .select()
-      .eq('user_id', user.id)
-      .single();
-
-  if (existingSessionError && existingSessionError.code !== 'PGRST116') {
-    return res.status(500).json({ message: 'Something went wrong' });
-  }
-
-  if (existingSession) {
-    const { data: _session, error: sessionError } = await supabaseAdmin
-      .from('sessions')
-      .update({
-        refresh_token: hashedRefreshToken,
-      })
-      .eq('user_id', user.id);
-
-    if (sessionError) {
-      return res.status(500).json({ message: 'Something went wrong' });
-    }
-
-    return res.status(200).json({
-      message: 'user logged in successfully',
-      user: { firstname: user.firstname, email: user.email },
-    });
-  }
-
+  // one row per device/session — never overwrite an existing session here,
+  // otherwise logging in on a second device would invalidate the first
   const { data: _session, error: sessionError } = await supabaseAdmin
     .from('sessions')
     .insert({
@@ -159,11 +132,18 @@ export const UserLogin = async (req: Request, res: Response) => {
 };
 
 export const UserLogout = async (req: Request, res: Response) => {
-  if (req.user) {
+  if (req.user && req.cookies.refreshToken) {
+    // only tear down this device's session — other devices stay logged in
+    const hashedRefreshToken = crypto
+      .createHash('sha256')
+      .update(req.cookies.refreshToken)
+      .digest('hex');
+
     const { data: _session, error: sessionError } = await supabaseAdmin
       .from('sessions')
       .delete()
-      .eq('user_id', req.user.id);
+      .eq('user_id', req.user.id)
+      .eq('refresh_token', hashedRefreshToken);
 
     if (sessionError) {
       logger.error({ sessionError }, 'Error logging out user');
@@ -243,10 +223,12 @@ export const refreshToken = async (req: Request, res: Response) => {
         .update(newrefreshToken)
         .digest('hex');
 
+      // scoped to this specific session row so rotating it doesn't
+      // invalidate the user's other devices/tabs
       const { data: _session, error: sessionError } = await supabaseAdmin
         .from('sessions')
         .update({ refresh_token: hashedRefreshToken })
-        .eq('user_id', payload.id);
+        .eq('id', existingsession.id);
 
       if (sessionError) {
         return res.status(500).json({ message: 'Something went wrong' });
