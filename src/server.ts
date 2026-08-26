@@ -33,7 +33,6 @@ app.set('trust proxy', 1);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info({ method: req.method, url: req.url }, 'Incoming request');
-  logger.debug({ headers: req.headers, body: req.body }, 'Request details');
   next();
 });
 
