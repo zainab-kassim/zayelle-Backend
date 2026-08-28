@@ -17,7 +17,8 @@ export const createorder = async (req: Request, res: Response) => {
     cart_id,
     street_address,
     apt_no,
-    phone_number,
+    customerName,
+    customerPhonenumber,
     city,
     state,
     postal_code,
@@ -47,7 +48,8 @@ export const createorder = async (req: Request, res: Response) => {
       cart_id,
       total_price,
       status: 'pending',
-      phone_number,
+      customerName,
+      customerPhonenumber,
       street_address,
       apt_no,
       city,
@@ -59,7 +61,7 @@ export const createorder = async (req: Request, res: Response) => {
       currency: req.currency,
     })
     .select(
-      `id,user_id(id,firstname,email),cart_id,total_price,status,phone_number,street_address,apt_no,city,state,postal_code,country,totalLocal`,
+      `id,user_id(id,email),cart_id,total_price,status,customerName,customerPhonenumber,street_address,apt_no,city,state,postal_code,country,totalLocal`,
     )
     .single();
 
@@ -165,7 +167,8 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     order_id,
     street_address,
     apt_no,
-    phone_number,
+    customerName,
+    customerPhonenumber,
     city,
     state,
     postal_code,
@@ -177,7 +180,8 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     .update({
       street_address,
       apt_no,
-      phone_number,
+      customerName,
+      customerPhonenumber,
       city,
       state,
       postal_code,
@@ -185,7 +189,9 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     })
     .eq('id', order_id)
     .eq('user_id', req.user.id)
-    .select('street_address,apt_no,phone_number,city,state,postal_code,country')
+    .select(
+      'street_address,apt_no,customerName,customerPhonenumber,city,state,postal_code,country',
+    )
     .single();
 
   if (updatedordererror) {

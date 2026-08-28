@@ -4,7 +4,8 @@ export interface orders {
   cart_id: number;
   totalAmount: string;
   status: [string];
-  phonenumber: string;
+  customerName: string;
+  customerPhonenumber: string;
   street_address: string;
   apt_no: string;
   city: string;

@@ -1,9 +1,7 @@
 export interface users {
   id: number;
   email: string;
-  firstname: string;
-  lastname: string;
-  phonenumber: string;
-  password: string;
+  fullName: string;
+  password: string | null;
   createdat?: Date;
 }

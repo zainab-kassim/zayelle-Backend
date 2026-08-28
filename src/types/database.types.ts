@@ -121,6 +121,8 @@ export type Database = {
           country: string | null;
           created_at: string;
           currency: string | null;
+          customerName: string | null;
+          customerPhonenumber: string | null;
           id: number;
           phone_number: string | null;
           postal_code: string | null;
@@ -141,6 +143,8 @@ export type Database = {
           country?: string | null;
           created_at?: string;
           currency?: string | null;
+          customerName?: string | null;
+          customerPhonenumber?: string | null;
           id?: number;
           phone_number?: string | null;
           postal_code?: string | null;
@@ -161,6 +165,8 @@ export type Database = {
           country?: string | null;
           created_at?: string;
           currency?: string | null;
+          customerName?: string | null;
+          customerPhonenumber?: string | null;
           id?: number;
           phone_number?: string | null;
           postal_code?: string | null;
@@ -299,29 +305,23 @@ export type Database = {
         Row: {
           created_at: string | null;
           email: string;
-          firstname: string;
+          fullName: string;
           id: number;
-          lastname: string;
-          password: string;
-          phonenumber: string;
+          password: string | null;
         };
         Insert: {
           created_at?: string | null;
           email: string;
-          firstname: string;
+          fullName: string;
           id?: number;
-          lastname: string;
-          password: string;
-          phonenumber: string;
+          password?: string | null;
         };
         Update: {
           created_at?: string | null;
           email?: string;
-          firstname?: string;
+          fullName?: string;
           id?: number;
-          lastname?: string;
-          password?: string;
-          phonenumber?: string;
+          password?: string | null;
         };
         Relationships: [];
       };

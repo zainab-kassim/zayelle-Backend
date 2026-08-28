@@ -244,7 +244,7 @@ export const getcart = async (req: Request, res: Response) => {
 
   const { data: existingcart, error: existingcarterror } = await supabase
     .from('carts')
-    .select(`*,user_id(firstname)`)
+    .select(`*,user_id(fullName)`)
     .eq('user_id', userid)
     .single();
   if (existingcarterror || !existingcart) {

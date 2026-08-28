@@ -1,6 +1,7 @@
 import {
   UserSignup,
   UserLogin,
+  GoogleAuth,
   UserLogout,
   refreshToken,
 } from '../controllers/user.controller';
@@ -8,6 +9,7 @@ import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
 import { userSignupSchema } from '../schemas/user.signup.schema';
 import { userLoginSchema } from '../schemas/user.login.schema';
+import { userGoogleSchema } from '../schemas/user.google.schema';
 import { validateUser } from '../middleware/validate';
 import { authLimiter } from '../middleware/consume';
 
@@ -23,6 +25,12 @@ router.post(
   authLimiter,
   validateUser(userLoginSchema),
   handleAsyncErr(UserLogin),
+);
+router.post(
+  '/google',
+  authLimiter,
+  validateUser(userGoogleSchema),
+  handleAsyncErr(GoogleAuth),
 );
 router.post('/logout', handleAsyncErr(UserLogout));
 

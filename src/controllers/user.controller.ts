@@ -8,14 +8,18 @@ import {
   RemoveAccessTokenCookieOptions,
 } from '../utils/authCookies';
 import { supabase } from '../config/db';
-import { RefreshSecretKey } from '../auth/config';
+import { RefreshSecretKey, GoogleClientId } from '../auth/config';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import crypto from 'crypto';
 import logger from '../middleware/logger';
+import { issueSession } from '../utils/issueSession';
+import { OAuth2Client } from 'google-auth-library';
+
+const googleClient = new OAuth2Client(GoogleClientId);
 
 export const UserSignup = async (req: Request, res: Response) => {
-  const { firstName, lastName, email, phoneNumber, password } = req.body;
+  const { fullName, email, password } = req.body;
 
   const { data: existingUser } = await supabase
     .from('users')
@@ -34,10 +38,8 @@ export const UserSignup = async (req: Request, res: Response) => {
   const { data: newUser, error: newUserError } = await supabase
     .from('users')
     .insert({
-      firstname: firstName,
-      lastname: lastName,
+      fullName,
       email,
-      phonenumber: phoneNumber,
       password: hashedPassword,
     })
     .select()
@@ -48,36 +50,11 @@ export const UserSignup = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Error creating user' });
   }
 
-  const accessToken = GenerateAccessToken({
-    email: newUser.email,
-    id: newUser.id,
-  });
-  const refreshToken = GenerateRefreshToken({
-    email: newUser.email,
-    id: newUser.id,
-  });
+  await issueSession(res, { id: newUser.id, email: newUser.email });
 
-  const hashedRefreshToken = crypto
-    .createHash('sha256')
-    .update(refreshToken)
-    .digest('hex');
-
-  const { data: _session, error: sessionError } = await supabaseAdmin
-    .from('sessions')
-    .insert({
-      user_id: newUser.id,
-      refresh_token: hashedRefreshToken,
-    });
-
-  if (sessionError) {
-    return res.status(500).json({ message: 'Something went wrong' });
-  }
-
-  SetAccessTokenCookieOptions(res, accessToken);
-  SetRefreshTokenCookieOptions(res, refreshToken);
   res.status(201).json({
     message: 'user signed up successfully',
-    user: { firstname: newUser.firstname },
+    user: { fullName: newUser.fullName, email: newUser.email },
   });
 };
 
@@ -95,39 +72,88 @@ export const UserLogin = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
+  // Google-only accounts have no password to compare against
+  if (!user.password) {
+    return res.status(401).json({
+      message: 'This account uses Google sign-in. Continue with Google.',
+    });
+  }
+
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     logger.error({ userError }, 'Invalid email or password');
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
-  const accessToken = GenerateAccessToken({ email: user.email, id: user.id });
-  const refreshToken = GenerateRefreshToken({ email: user.email, id: user.id });
-
-  SetAccessTokenCookieOptions(res, accessToken);
-  SetRefreshTokenCookieOptions(res, refreshToken);
-
-  const hashedRefreshToken = crypto
-    .createHash('sha256')
-    .update(refreshToken)
-    .digest('hex');
-
-  // one row per device/session — never overwrite an existing session here,
-  // otherwise logging in on a second device would invalidate the first
-  const { data: _session, error: sessionError } = await supabaseAdmin
-    .from('sessions')
-    .insert({
-      user_id: user.id,
-      refresh_token: hashedRefreshToken,
-    });
-
-  if (sessionError) {
-    return res.status(500).json({ message: 'Something went wrong' });
-  }
+  await issueSession(res, { id: user.id, email: user.email });
 
   res.status(200).json({
     message: 'user logged in successfully',
-    user: { firstname: user.firstname, email: user.email },
+    user: { fullName: user.fullName, email: user.email },
+  });
+};
+
+export const GoogleAuth = async (req: Request, res: Response) => {
+  const { idToken } = req.body;
+
+  if (!GoogleClientId) {
+    logger.error('GOOGLE_CLIENT_ID is not configured');
+    return res
+      .status(500)
+      .json({ message: 'Google sign-in is not configured' });
+  }
+
+  // verifyIdToken checks the signature (against Google's cached public keys),
+  // the issuer, that `aud` matches our client id, and that it hasn't expired
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: GoogleClientId,
+    });
+    payload = ticket.getPayload();
+  } catch (err) {
+    logger.error({ err }, 'Invalid Google ID token');
+    return res.status(401).json({ message: 'Invalid Google sign-in' });
+  }
+
+  if (!payload?.email || !payload.email_verified) {
+    return res
+      .status(401)
+      .json({ message: 'Your Google email is not verified' });
+  }
+
+  const email = payload.email;
+  const fullName = payload.name ?? email;
+
+  // find-or-create: existing row → this is a login; no row → this is a signup
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select()
+    .eq('email', email)
+    .single();
+
+  let user = existingUser;
+
+  if (!user) {
+    const { data: newUser, error: newUserError } = await supabase
+      .from('users')
+      .insert({ fullName, email })
+      .select()
+      .single();
+
+    if (newUserError || !newUser) {
+      logger.error({ newUserError }, 'Error creating Google user');
+      return res.status(500).json({ message: 'Error creating user' });
+    }
+    user = newUser;
+  }
+
+  await issueSession(res, { id: user.id, email: user.email });
+
+  res.status(200).json({
+    message: 'user signed in with Google successfully',
+    user: { fullName: user.fullName, email: user.email },
   });
 };
 
