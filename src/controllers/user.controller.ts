@@ -94,7 +94,7 @@ export const UserLogin = async (req: Request, res: Response) => {
 };
 
 export const GoogleAuth = async (req: Request, res: Response) => {
-  const { accessToken } = req.body;
+  const { googleAccessToken } = req.body;
 
   if (!GoogleClientId) {
     logger.error('GOOGLE_CLIENT_ID is not configured');
@@ -107,7 +107,7 @@ export const GoogleAuth = async (req: Request, res: Response) => {
   // it throws if the token is invalid or expired
   let tokenInfo;
   try {
-    tokenInfo = await googleClient.getTokenInfo(accessToken);
+    tokenInfo = await googleClient.getTokenInfo(googleAccessToken);
   } catch (err) {
     logger.error({ err }, 'Invalid Google access token');
     return res.status(401).json({ message: 'Invalid Google sign-in' });
@@ -132,7 +132,7 @@ export const GoogleAuth = async (req: Request, res: Response) => {
   try {
     const profileRes = await fetch(
       'https://www.googleapis.com/oauth2/v3/userinfo',
-      { headers: { Authorization: `Bearer ${accessToken}` } },
+      { headers: { Authorization: `Bearer ${googleAccessToken}` } },
     );
     if (profileRes.ok) {
       const profile = (await profileRes.json()) as { name?: string };
