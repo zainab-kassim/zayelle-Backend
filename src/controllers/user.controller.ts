@@ -8,13 +8,18 @@ import {
   RemoveAccessTokenCookieOptions,
 } from '../utils/authCookies';
 import { supabase } from '../config/db';
-import { RefreshSecretKey, GoogleClientId } from '../auth/config';
+import {
+  RefreshSecretKey,
+  GoogleClientId,
+  AppleServicesId,
+} from '../auth/config';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import crypto from 'crypto';
 import logger from '../middleware/logger';
 import { issueSession } from '../utils/issueSession';
 import { OAuth2Client } from 'google-auth-library';
+import appleSignin from 'apple-signin-auth';
 
 const googleClient = new OAuth2Client(GoogleClientId);
 
@@ -172,6 +177,94 @@ export const GoogleAuth = async (req: Request, res: Response) => {
 
   res.status(200).json({
     message: 'user signed in with Google successfully',
+    user: { fullName: user.fullName, email: user.email },
+  });
+};
+
+export const AppleAuth = async (req: Request, res: Response) => {
+  const { idToken, fullName } = req.body;
+
+  if (!AppleServicesId) {
+    logger.error('APPLE_SERVICES_ID is not configured');
+    return res.status(500).json({ message: 'Apple sign-in is not configured' });
+  }
+
+  // verifyIdToken fetches Apple's public keys and checks the signature,
+  // issuer, `aud` (our Services ID) and expiry
+  let payload;
+  try {
+    payload = await appleSignin.verifyIdToken(idToken, {
+      audience: AppleServicesId,
+    });
+  } catch (err) {
+    logger.error({ err }, 'Invalid Apple ID token');
+    return res.status(401).json({ message: 'Invalid Apple sign-in' });
+  }
+
+  const appleId = payload.sub;
+  const email = payload.email;
+  const emailVerified =
+    payload.email_verified === true || payload.email_verified === 'true';
+
+  // match on the stable Apple user id first — Apple only sends email/name on
+  // the first sign-in, and the email may be a private relay address
+  const { data: byAppleId } = await supabase
+    .from('users')
+    .select()
+    .eq('appleId', appleId)
+    .single();
+
+  let user = byAppleId;
+
+  // returning user who first signed up another way → link Apple to that row
+  if (!user && email) {
+    const { data: byEmail } = await supabase
+      .from('users')
+      .select()
+      .eq('email', email)
+      .single();
+
+    if (byEmail) {
+      const { data: linked, error: linkError } = await supabase
+        .from('users')
+        .update({ appleId })
+        .eq('id', byEmail.id)
+        .select()
+        .single();
+
+      if (linkError || !linked) {
+        logger.error({ linkError }, 'Error linking Apple account');
+        return res.status(500).json({ message: 'Something went wrong' });
+      }
+      user = linked;
+    }
+  }
+
+  // brand new user
+  if (!user) {
+    if (!email || !emailVerified) {
+      return res
+        .status(401)
+        .json({ message: 'Could not get a verified email from Apple' });
+    }
+
+    const { data: newUser, error: newUserError } = await supabase
+      .from('users')
+      .insert({ fullName: fullName ?? email, email, appleId })
+      .select()
+      .single();
+
+    if (newUserError || !newUser) {
+      logger.error({ newUserError }, 'Error creating Apple user');
+      return res.status(500).json({ message: 'Error creating user' });
+    }
+    user = newUser;
+  }
+
+  await issueSession(res, { id: user.id, email: user.email });
+
+  res.status(200).json({
+    message: 'user signed in with Apple successfully',
     user: { fullName: user.fullName, email: user.email },
   });
 };

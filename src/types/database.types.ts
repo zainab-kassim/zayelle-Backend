@@ -303,6 +303,7 @@ export type Database = {
       };
       users: {
         Row: {
+          appleId: string | null;
           created_at: string | null;
           email: string;
           fullName: string;
@@ -310,6 +311,7 @@ export type Database = {
           password: string | null;
         };
         Insert: {
+          appleId?: string | null;
           created_at?: string | null;
           email: string;
           fullName: string;
@@ -317,6 +319,7 @@ export type Database = {
           password?: string | null;
         };
         Update: {
+          appleId?: string | null;
           created_at?: string | null;
           email?: string;
           fullName?: string;
