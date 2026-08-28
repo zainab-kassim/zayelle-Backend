@@ -77,10 +77,10 @@ export const UserLogin = async (req: Request, res: Response) => {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
 
-  // Google-only accounts have no password to compare against
+  // social-only accounts (Google/Apple) have no password to compare against
   if (!user.password) {
     return res.status(401).json({
-      message: 'This account uses Google sign-in. Continue with Google.',
+      message: 'This account uses Google or Apple sign-in.',
     });
   }
 
