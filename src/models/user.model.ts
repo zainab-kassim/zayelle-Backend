@@ -3,6 +3,5 @@ export interface users {
   email: string;
   fullName: string;
   password: string | null;
-  appleId?: string | null;
   createdat?: Date;
 }

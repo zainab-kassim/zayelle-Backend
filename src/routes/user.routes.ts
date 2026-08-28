@@ -2,7 +2,6 @@ import {
   UserSignup,
   UserLogin,
   GoogleAuth,
-  AppleAuth,
   UserLogout,
   refreshToken,
 } from '../controllers/user.controller';
@@ -11,7 +10,6 @@ import { Router } from 'express';
 import { userSignupSchema } from '../schemas/user.signup.schema';
 import { userLoginSchema } from '../schemas/user.login.schema';
 import { userGoogleSchema } from '../schemas/user.google.schema';
-import { userAppleSchema } from '../schemas/user.apple.schema';
 import { validateUser } from '../middleware/validate';
 import { authLimiter } from '../middleware/consume';
 
@@ -33,12 +31,6 @@ router.post(
   authLimiter,
   validateUser(userGoogleSchema),
   handleAsyncErr(GoogleAuth),
-);
-router.post(
-  '/apple',
-  authLimiter,
-  validateUser(userAppleSchema),
-  handleAsyncErr(AppleAuth),
 );
 router.post('/logout', handleAsyncErr(UserLogout));
 

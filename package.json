@@ -31,7 +31,6 @@
   "description": "",
   "dependencies": {
     "@supabase/supabase-js": "^2.78.0",
-    "apple-signin-auth": "^2.1.0",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
     "bottleneck": "^2.19.5",
