@@ -94,7 +94,7 @@ export const UserLogin = async (req: Request, res: Response) => {
 };
 
 export const GoogleAuth = async (req: Request, res: Response) => {
-  const { idToken } = req.body;
+  const { accessToken } = req.body;
 
   if (!GoogleClientId) {
     logger.error('GOOGLE_CLIENT_ID is not configured');
@@ -103,28 +103,47 @@ export const GoogleAuth = async (req: Request, res: Response) => {
       .json({ message: 'Google sign-in is not configured' });
   }
 
-  // verifyIdToken checks the signature (against Google's cached public keys),
-  // the issuer, that `aud` matches our client id, and that it hasn't expired
-  let payload;
+  // getTokenInfo asks Google about the access token and returns its claims —
+  // it throws if the token is invalid or expired
+  let tokenInfo;
   try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: GoogleClientId,
-    });
-    payload = ticket.getPayload();
+    tokenInfo = await googleClient.getTokenInfo(accessToken);
   } catch (err) {
-    logger.error({ err }, 'Invalid Google ID token');
+    logger.error({ err }, 'Invalid Google access token');
     return res.status(401).json({ message: 'Invalid Google sign-in' });
   }
 
-  if (!payload?.email || !payload.email_verified) {
+  // `aud` must be our client id — proves the token was minted for this app
+  if (tokenInfo.aud !== GoogleClientId) {
+    return res.status(401).json({ message: 'Invalid Google sign-in' });
+  }
+
+  if (!tokenInfo.email || !tokenInfo.email_verified) {
     return res
       .status(401)
       .json({ message: 'Your Google email is not verified' });
   }
 
-  const email = payload.email;
-  const fullName = payload.name ?? email;
+  const email = tokenInfo.email;
+
+  // the token info has no display name — fetch it from the userinfo endpoint,
+  // falling back to the email if that call fails
+  let fullName = email;
+  try {
+    const profileRes = await fetch(
+      'https://www.googleapis.com/oauth2/v3/userinfo',
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (profileRes.ok) {
+      const profile = (await profileRes.json()) as { name?: string };
+      if (profile.name) fullName = profile.name;
+    }
+  } catch (err) {
+    logger.error(
+      { err },
+      'Could not fetch Google userinfo; using email as name',
+    );
+  }
 
   // find-or-create: existing row → this is a login; no row → this is a signup
   const { data: existingUser } = await supabase
