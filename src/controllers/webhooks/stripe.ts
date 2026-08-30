@@ -13,41 +13,26 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     process.env.STRIPE_WEBHOOK_SECRET!,
   );
 
-  // Payment failed — restore inventory
-  if (
-    event.type === 'payment_intent.payment_failed' ||
-    event.type === 'payment_intent.canceled'
-  ) {
-    const orderId = event.data.object.metadata.order_id;
-    const status =
-      event.type === 'payment_intent.canceled' ? 'canceled' : 'failed';
-    const failureReason = event.data.object.last_payment_error?.code;
+  // ── Abandoned / timed-out checkout → cancel the order, restore inventory ──
+  if (event.type === 'checkout.session.expired') {
+    const session = event.data.object;
 
-    // match on currency/amount too, like the succeeded handler below —
-    // otherwise a stray PaymentIntent event sharing this order_id's metadata
-    // (e.g. an earlier failed attempt) can flip the order before the real
-    // payment_intent.succeeded for THIS charge arrives, and that success
-    // update then silently no-ops since status is no longer 'pending'
     const { data: order, error: orderError } = await supabase
       .from('order')
-      .update({ status: status })
-      .eq('id', orderId)
+      .update({ status: 'canceled' })
+      .eq('checkoutSession_id', session.id)
       .eq('status', 'pending')
-      .eq('currency', event.data.object.currency.toUpperCase())
-      .eq('totalLocal', event.data.object.amount / 100)
-      .select('id, cart_id')
+      .select('id')
       .single();
 
     if (!order || orderError) {
-      logger.error({ orderError }, 'Already processed');
-      return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
+      // already resolved (paid, verified, or handled on a previous delivery)
+      return res.status(200).json({ message: 'Already processed' });
     }
 
     const { error: restoreError } = await supabase.rpc(
       'increment_inventory_on_restore',
-      {
-        p_order_id: orderId,
-      },
+      { p_order_id: order.id },
     );
     if (restoreError) {
       logger.error(
@@ -56,8 +41,40 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       );
     }
 
-    // still record what was ordered even though payment didn't succeed —
-    // best-effort, doesn't affect the payment status already recorded above
+    // leave the cart intact so the user can start a fresh checkout
+    return res
+      .status(200)
+      .json({ message: 'Checkout expired', status: 'canceled' });
+  }
+
+  // ── Async payment method failed (bank debit etc.) → restore inventory ──
+  if (event.type === 'checkout.session.async_payment_failed') {
+    const session = event.data.object;
+
+    const { data: order, error: orderError } = await supabase
+      .from('order')
+      .update({ status: 'failed' })
+      .eq('checkoutSession_id', session.id)
+      .eq('status', 'pending')
+      .select('id, cart_id')
+      .single();
+
+    if (!order || orderError) {
+      return res.status(200).json({ message: 'Already processed' });
+    }
+
+    const { error: restoreError } = await supabase.rpc(
+      'increment_inventory_on_restore',
+      { p_order_id: order.id },
+    );
+    if (restoreError) {
+      logger.error(
+        { error: restoreError },
+        'CRITICAL: inventory restore failed',
+      );
+    }
+
+    // still record what was ordered — best effort, keeps the cart
     try {
       await handlePostPayment(order.id, order.cart_id, { clearCart: false });
     } catch (err) {
@@ -66,31 +83,34 @@ export const stripeWebhook = async (req: Request, res: Response) => {
 
     return res
       .status(200)
-      .json({ message: 'payment failed', status: status, failureReason });
+      .json({ message: 'payment failed', status: 'failed' });
   }
 
-  if (event.type === 'payment_intent.requires_action') {
-    return res.status(200).json({
-      message:
-        'verify payment from bank, a confirmation email or code has been sent if required.',
-      status: 'pending',
-    });
-  }
-
-  if (event.type !== 'payment_intent.succeeded') {
+  // ── Anything else we don't act on here ──
+  if (event.type !== 'checkout.session.completed') {
     logger.info('event ignored');
     return res.status(200).json({ message: 'Event ignored' });
   }
 
-  // order.checkoutSession_id stores the Checkout Session id, not this PaymentIntent's id
-  // (the webhook is subscribed to payment_intent.* events, so match on metadata.order_id instead)
+  // ── checkout.session.completed ──
+  const session = event.data.object;
+
+  // card payments settle synchronously (payment_status 'paid'); async methods
+  // complete the session first and settle later via
+  // checkout.session.async_payment_succeeded — handle that too if you enable them
+  if (session.payment_status !== 'paid') {
+    return res
+      .status(200)
+      .json({ message: 'Awaiting payment', status: 'pending' });
+  }
+
+  // checkoutSession_id holds this exact cs_… id (stored at session creation) —
+  // a unique per-attempt match, so no amount/currency guard needed
   const { data: updatedOrder, error: updatedOrderError } = await supabase
     .from('order')
     .update({ status: 'success' })
+    .eq('checkoutSession_id', session.id)
     .eq('status', 'pending')
-    .eq('id', event.data.object.metadata.order_id)
-    .eq('currency', event.data.object.currency.toUpperCase())
-    .eq('totalLocal', event.data.object.amount / 100)
     .select('id, cart_id')
     .single();
 

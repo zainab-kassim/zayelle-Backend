@@ -98,9 +98,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
         success_url: `${frontendUrl}/checkout?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${frontendUrl}/checkout`,
         metadata: { order_id },
-        // the webhook is subscribed to payment_intent.* events, not checkout.session.*,
-        // so the underlying PaymentIntent needs its own copy of the metadata to match on
-        payment_intent_data: { metadata: { order_id } },
+        // abandoned/timed-out sessions fire checkout.session.expired at this
+        // time, which the webhook uses to restore inventory (Stripe floor: 30m)
+        expires_at: Math.floor(Date.now() / 1000) + 35 * 60,
       },
       {
         idempotencyKey: `order_${order_id}`,
