@@ -1,6 +1,7 @@
 import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
 import {
+  cancelCheckout,
   createCheckoutSession,
   verifyCheckoutSession,
 } from '../controllers/stripe.payment.controller';
@@ -17,6 +18,13 @@ router.post(
   paymentLimiter,
   validateUser(stripePaymentSchema),
   handleAsyncErr(createCheckoutSession),
+);
+router.post(
+  '/cancel-checkout',
+  isLoggedIn,
+  paymentLimiter,
+  validateUser(stripePaymentSchema),
+  handleAsyncErr(cancelCheckout),
 );
 router.get(
   '/verify-payment/:session_id',

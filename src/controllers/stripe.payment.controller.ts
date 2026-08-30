@@ -96,7 +96,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
           },
         ],
         success_url: `${frontendUrl}/checkout?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${frontendUrl}/checkout`,
+        cancel_url: `${frontendUrl}/checkout?canceled=1&order_id=${order_id}`,
         metadata: { order_id },
         // abandoned/timed-out sessions fire checkout.session.expired at this
         // time, which the webhook uses to restore inventory (Stripe floor: 30m)
@@ -298,4 +298,82 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
   return res
     .status(200)
     .json({ message: 'payment already processed', status: order.status });
+};
+
+// Called by the frontend when the user backs out of Stripe Checkout (lands on
+// cancel_url). Restores inventory immediately instead of waiting ~35m for the
+// checkout.session.expired webhook. That webhook still fires as the backstop for
+// exits this path misses (tab closed, connection dropped).
+export const cancelCheckout = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  const { order_id } = req.body;
+
+  const { data: order, error: orderError } = await supabase
+    .from('order')
+    .select('id,status,checkoutSession_id')
+    .eq('id', order_id)
+    .eq('user_id', req.user.id)
+    .single();
+
+  if (orderError || !order) {
+    logger.error({ orderError }, 'Order not found');
+    return res.status(404).json({ message: 'Order not found' });
+  }
+
+  if (!order.checkoutSession_id || order.status !== 'pending') {
+    // never checked out, or already resolved (paid / canceled / expired)
+    return res
+      .status(200)
+      .json({ message: 'Nothing to cancel', status: order.status });
+  }
+
+  // don't cancel a session that actually got paid (e.g. completed in another tab)
+  const session = await stripe.checkout.sessions.retrieve(
+    order.checkoutSession_id,
+  );
+  if (session.payment_status === 'paid') {
+    return res
+      .status(200)
+      .json({ message: 'Payment already completed', status: 'success' });
+  }
+
+  // flip to canceled — guarded on 'pending' so it's a no-op if the
+  // checkout.session.expired webhook raced us here first
+  const { data: canceled, error: cancelError } = await supabase
+    .from('order')
+    .update({ status: 'canceled' })
+    .eq('id', order.id)
+    .eq('status', 'pending')
+    .select('id')
+    .single();
+
+  if (canceled && !cancelError) {
+    const { error: restoreError } = await supabase.rpc(
+      'increment_inventory_on_restore',
+      { p_order_id: order.id },
+    );
+    if (restoreError) {
+      logger.error(
+        { error: restoreError },
+        'CRITICAL: inventory restore failed',
+      );
+    }
+  }
+
+  // close the session on Stripe's side too so it can't be paid later; this
+  // fires checkout.session.expired, which the webhook sees as already handled
+  if (session.status === 'open') {
+    try {
+      await stripe.checkout.sessions.expire(order.checkoutSession_id);
+    } catch (err) {
+      logger.error({ err }, 'Failed to expire checkout session on cancel');
+    }
+  }
+
+  // leave the cart intact so the user can start a fresh checkout
+  return res
+    .status(200)
+    .json({ message: 'Checkout canceled', status: 'canceled' });
 };
