@@ -8,14 +8,40 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   // Verify the request actually came from Paystack
   const secret = process.env.PAYSTACK_SECRET_KEY!;
 
+  // TEMP: diagnosing 401s on the live webhook — is it the key or the raw body?
+  logger.info(
+    {
+      isBuffer: Buffer.isBuffer(req.body),
+      bodyLen: req.body?.length,
+      contentType: req.headers['content-type'],
+      keySet: !!process.env.PAYSTACK_SECRET_KEY,
+      keyTrimmedMatches:
+        process.env.PAYSTACK_SECRET_KEY ===
+        process.env.PAYSTACK_SECRET_KEY?.trim(),
+      keyPrefix: process.env.PAYSTACK_SECRET_KEY?.slice(0, 8),
+    },
+    'paystack webhook debug',
+  );
+
   const hash = createHmac('sha512', secret).update(req.body).digest('hex');
 
   if (hash !== req.headers['x-paystack-signature']) {
+    logger.warn(
+      {
+        computedPrefix: hash.slice(0, 12),
+        receivedPrefix: String(req.headers['x-paystack-signature'] ?? '').slice(
+          0,
+          12,
+        ),
+      },
+      'paystack webhook signature mismatch (401)',
+    );
     return res.status(401).json({ message: 'Invalid' });
   }
 
   const event = JSON.parse(req.body.toString());
   const { data } = event;
+  console.log('charge.abandoned event received', event.event);
   // Payment failed — restore inventory
   if (event.event === 'charge.failed') {
     const orderId = data.metadata.orderId;
@@ -63,6 +89,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   }
 
   if (event.event === 'charge.abandoned') {
+    console.log('charge.abandoned event received', event.event);
     const orderId = data.metadata.orderId;
 
     const { data: order, error } = await supabase

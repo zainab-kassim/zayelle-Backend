@@ -176,6 +176,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
         headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       },
     );
+    console.log(data.data.status);
 
     if (data.data.status === 'success') {
       const { data: updatedOrder, error: updated_order_error } = await supabase

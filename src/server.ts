@@ -51,7 +51,7 @@ app.use('/api/webhooks', webhookRoute);
 // To parse form data in POST request body
 app.use(express.urlencoded({ extended: true }));
 
-// To parse incoming JSON in POST request body
+// To parse incoming JSON in POST request body $ payload limit set to 2mb to prevent large payloads
 app.use(express.json({ limit: '2mb' }));
 
 app.use(currencyMiddleware);
