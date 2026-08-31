@@ -15,6 +15,7 @@ import crypto from 'crypto';
 import logger from '../middleware/logger';
 import { issueSession } from '../utils/issueSession';
 import { OAuth2Client } from 'google-auth-library';
+import { sendPasswordResetEmail } from '../utils/sendPasswordResetEmail';
 
 const googleClient = new OAuth2Client(GoogleClientId);
 
@@ -198,7 +199,7 @@ export const UserLogout = async (req: Request, res: Response) => {
   RemoveAccessTokenCookieOptions(res);
   RemoveRefreshTokenCookieOptions(res);
 
-  return res.status(200).json({ message: 'User logged out successfully' });
+  return res.status(200).json({ message: 'user logged out successfully' });
 };
 
 export const refreshToken = async (req: Request, res: Response) => {
@@ -290,4 +291,105 @@ export const refreshToken = async (req: Request, res: Response) => {
         .json({ message: 'Access token refreshed successfully' });
     },
   );
+};
+
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+const hashToken = (token: string) =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
+export const ForgotPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Same response in every branch — never reveal whether the account exists.
+  const genericResponse = () =>
+    res.status(200).json({
+      message:
+        'If an account exists for that email, a password reset link has been sent.',
+    });
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('id, email, password')
+    .eq('email', email)
+    .single();
+
+  // No account, or a Google-only account with no password to reset.
+  if (!user || !user.password) {
+    return genericResponse();
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = hashToken(rawToken);
+  const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+
+  // Drop any earlier unused tokens for this user, then store the new one.
+  await supabaseAdmin
+    .from('password_reset_tokens')
+    .delete()
+    .eq('user_id', user.id)
+    .is('used_at', null);
+
+  const { error: insertError } = await supabaseAdmin
+    .from('password_reset_tokens')
+    .insert({ user_id: user.id, token_hash: tokenHash, expires_at: expiresAt });
+
+  if (insertError) {
+    logger.error({ insertError }, 'Error creating password reset token');
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+
+  const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${rawToken}`;
+  await sendPasswordResetEmail(user.email, resetUrl);
+
+  return genericResponse();
+};
+
+export const ResetPassword = async (req: Request, res: Response) => {
+  const { token, password } = req.body;
+  const tokenHash = hashToken(token);
+
+  const { data: resetRow } = await supabaseAdmin
+    .from('password_reset_tokens')
+    .select('id, user_id, expires_at, used_at')
+    .eq('token_hash', tokenHash)
+    .single();
+
+  if (
+    !resetRow ||
+    resetRow.used_at ||
+    new Date(resetRow.expires_at).getTime() < Date.now()
+  ) {
+    return res
+      .status(400)
+      .json({ message: 'This reset link is invalid or has expired.' });
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const { error: updateError } = await supabaseAdmin
+    .from('users')
+    .update({ password: hashedPassword })
+    .eq('id', resetRow.user_id);
+
+  if (updateError) {
+    logger.error({ updateError }, 'Error updating password on reset');
+    return res.status(500).json({ message: 'Something went wrong' });
+  }
+
+  // Consume this token and clear any other outstanding ones for the user.
+  await supabaseAdmin
+    .from('password_reset_tokens')
+    .update({ used_at: new Date().toISOString() })
+    .eq('id', resetRow.id);
+  await supabaseAdmin
+    .from('password_reset_tokens')
+    .delete()
+    .eq('user_id', resetRow.user_id)
+    .is('used_at', null);
+
+  // Force re-login on every device after a credential change.
+  await supabaseAdmin.from('sessions').delete().eq('user_id', resetRow.user_id);
+
+  return res.status(200).json({ message: 'Password updated. Please log in.' });
 };

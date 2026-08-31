@@ -4,12 +4,16 @@ import {
   GoogleAuth,
   UserLogout,
   refreshToken,
+  ForgotPassword,
+  ResetPassword,
 } from '../controllers/user.controller';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
 import { userSignupSchema } from '../schemas/user.signup.schema';
 import { userLoginSchema } from '../schemas/user.login.schema';
 import { userGoogleSchema } from '../schemas/user.google.schema';
+import { forgotPasswordSchema } from '../schemas/forgot.password.schema';
+import { resetPasswordSchema } from '../schemas/reset.password.schema';
 import { validateUser } from '../middleware/validate';
 import { authLimiter } from '../middleware/consume';
 
@@ -33,6 +37,19 @@ router.post(
   handleAsyncErr(GoogleAuth),
 );
 router.post('/logout', handleAsyncErr(UserLogout));
+
+router.post(
+  '/forgot-password',
+  authLimiter,
+  validateUser(forgotPasswordSchema),
+  handleAsyncErr(ForgotPassword),
+);
+router.post(
+  '/reset-password',
+  authLimiter,
+  validateUser(resetPasswordSchema),
+  handleAsyncErr(ResetPassword),
+);
 
 //Refresh Token
 router.post('/token', handleAsyncErr(refreshToken));
