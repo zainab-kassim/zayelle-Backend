@@ -10,7 +10,6 @@ export const initializePayment = async (req: Request, res: Response) => {
   }
 
   const email = req.user.email;
-  console.log(req.body);
   const { order_id } = req.body;
   const { data: order, error: orderError } = await supabase
     .from('order')
@@ -94,6 +93,10 @@ export const initializePayment = async (req: Request, res: Response) => {
         metadata: {
           orderId: order_id,
           currency,
+          // Paystack redirects here (not callback_url) when the user clicks
+          // Cancel/X on the checkout page — lets the frontend restore inventory
+          // immediately instead of waiting for the delayed charge.abandoned webhook
+          cancel_action: `${frontendUrl}/checkout?canceled=1&order_id=${order_id}&provider=paystack`,
         },
       },
       {
@@ -176,7 +179,6 @@ export const verifyPayment = async (req: Request, res: Response) => {
         headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
       },
     );
-    console.log(data.data.status);
 
     if (data.data.status === 'success') {
       const { data: updatedOrder, error: updated_order_error } = await supabase
@@ -309,4 +311,94 @@ export const verifyPayment = async (req: Request, res: Response) => {
   return res
     .status(200)
     .json({ message: 'Payment already processed', status: order.status });
+};
+
+// Hit by the frontend when Paystack redirects to cancel_action (user clicked
+// Cancel/X). Paystack has no "expire transaction" API, so we can only act once
+// Paystack itself reports the transaction abandoned/failed — otherwise we leave
+// it for the delayed charge.abandoned webhook / reconciliation.
+export const cancelPaystackCheckout = async (req: Request, res: Response) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  const { order_id } = req.body;
+
+  const { data: order, error: orderError } = await supabase
+    .from('order')
+    .select('id,status,reference,cart_id')
+    .eq('id', order_id)
+    .eq('user_id', req.user.id)
+    .single();
+
+  if (orderError || !order) {
+    logger.error({ orderError }, 'Order not found');
+    return res.status(404).json({ message: 'Order not found' });
+  }
+
+  if (!order.reference || order.status !== 'pending') {
+    // never initialized, or already resolved (success / abandoned / failed)
+    return res
+      .status(200)
+      .json({ message: 'Nothing to cancel', status: order.status });
+  }
+
+  const { data } = await axios.get(
+    `https://api.paystack.co/transaction/verify/${order.reference}`,
+    {
+      headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+    },
+  );
+  const paystackStatus = data.data.status;
+
+  if (paystackStatus === 'success') {
+    return res
+      .status(200)
+      .json({ message: 'Payment already completed', status: 'success' });
+  }
+
+  if (paystackStatus === 'failed' || paystackStatus === 'abandoned') {
+    const { data: updatedOrder, error: updated_order_error } = await supabase
+      .from('order')
+      .update({ status: paystackStatus })
+      .eq('id', order.id)
+      .eq('user_id', req.user.id)
+      .eq('status', 'pending')
+      .select('id')
+      .single();
+
+    if (updated_order_error || !updatedOrder) {
+      // webhook already handled it
+      return res
+        .status(200)
+        .json({ message: 'Already processed', status: paystackStatus });
+    }
+
+    const { error: restoreError } = await supabase.rpc(
+      'increment_inventory_on_restore',
+      { p_order_id: order.id },
+    );
+    if (restoreError) {
+      logger.error(
+        { error: restoreError },
+        'CRITICAL: inventory restore failed',
+      );
+    }
+
+    // record what was ordered — best effort, keep the cart for a retry
+    try {
+      await handlePostPayment(order.id, order.cart_id, { clearCart: false });
+    } catch (err) {
+      logger.error({ err }, 'Failed to record order items for canceled order');
+    }
+
+    return res
+      .status(200)
+      .json({ message: 'Checkout canceled', status: paystackStatus });
+  }
+
+  // still 'pending' on Paystack's side (e.g. bank transfer / USSD in flight) —
+  // can't safely cancel; leave it for charge.abandoned / reconciliation
+  return res
+    .status(200)
+    .json({ message: 'Payment still pending', status: 'pending' });
 };

@@ -96,7 +96,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
           },
         ],
         success_url: `${frontendUrl}/checkout?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${frontendUrl}/checkout?canceled=1&order_id=${order_id}`,
+        cancel_url: `${frontendUrl}/checkout?canceled=1&order_id=${order_id}&provider=stripe`,
         metadata: { order_id },
         // abandoned/timed-out sessions fire checkout.session.expired at this
         // time, which the webhook uses to restore inventory (Stripe floor: 30m)

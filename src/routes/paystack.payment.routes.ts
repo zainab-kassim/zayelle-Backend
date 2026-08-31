@@ -1,4 +1,5 @@
 import {
+  cancelPaystackCheckout,
   initializePayment,
   verifyPayment,
 } from '../controllers/paystack.payment.controller';
@@ -17,6 +18,13 @@ router.post(
   paymentLimiter,
   validateUser(paystackPaymentSchema),
   handleAsyncErr(initializePayment),
+);
+router.post(
+  '/cancel-checkout',
+  isLoggedIn,
+  paymentLimiter,
+  validateUser(paystackPaymentSchema),
+  handleAsyncErr(cancelPaystackCheckout),
 );
 router.get(
   '/verify/:reference',
