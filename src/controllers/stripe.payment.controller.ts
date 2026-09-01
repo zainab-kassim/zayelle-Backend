@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/db';
 import logger from '../middleware/logger';
 import { handlePostPayment } from '../utils/handlePostPayment';
+import { AuthErrorCode } from '../constants/authErrorCodes';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-02-25.clover',
@@ -10,7 +11,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 
 export const createCheckoutSession = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const { order_id } = req.body;
   const { data: order, error: orderError } = await supabase
@@ -154,7 +158,10 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
 
 export const verifyCheckoutSession = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const session_id = req.params.session_id as string;
 
@@ -306,7 +313,10 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
 // exits this path misses (tab closed, connection dropped).
 export const cancelCheckout = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const { order_id } = req.body;
 

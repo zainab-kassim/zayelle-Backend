@@ -3,10 +3,14 @@ import { Request, Response } from 'express';
 import { supabase } from '../config/db';
 import logger from '../middleware/logger';
 import { handlePostPayment } from '../utils/handlePostPayment';
+import { AuthErrorCode } from '../constants/authErrorCodes';
 
 export const initializePayment = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
 
   const email = req.user.email;
@@ -156,7 +160,10 @@ export const initializePayment = async (req: Request, res: Response) => {
 
 export const verifyPayment = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'User not authenticated' });
+    return res.status(401).json({
+      message: 'User not authenticated',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const { reference } = req.params;
 
@@ -319,7 +326,10 @@ export const verifyPayment = async (req: Request, res: Response) => {
 // it for the delayed charge.abandoned webhook / reconciliation.
 export const cancelPaystackCheckout = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const { order_id } = req.body;
 

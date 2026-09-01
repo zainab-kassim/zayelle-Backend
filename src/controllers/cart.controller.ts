@@ -3,10 +3,14 @@ import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
 import logger from '../middleware/logger';
+import { AuthErrorCode } from '../constants/authErrorCodes';
 
 export const addtocart = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const userid = req.user.id;
   const currency = req.currency;
@@ -151,7 +155,10 @@ export const addtocart = async (req: Request, res: Response) => {
 
 export const updatecartquantity = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
 
   const user_id = req.user.id;
@@ -199,7 +206,10 @@ export const updatecartquantity = async (req: Request, res: Response) => {
 
 export const deletecartitem = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
 
   const cartitemid = req.params.id;
@@ -235,7 +245,10 @@ export const deletecartitem = async (req: Request, res: Response) => {
 
 export const getcart = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const userid = req.user.id;
   const currency = req.currency;

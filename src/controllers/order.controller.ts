@@ -3,10 +3,14 @@ import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
 import logger from '../middleware/logger';
+import { AuthErrorCode } from '../constants/authErrorCodes';
 
 export const createorder = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'User not authenticated' });
+    return res.status(401).json({
+      message: 'User not authenticated',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const user_id = req.user.id;
   const currency = req.currency;
@@ -84,7 +88,10 @@ const STATUS_BUCKETS: Record<string, string[]> = {
 
 export const getOrderHistory = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
   const user_id = req.user.id;
   const status =
@@ -160,7 +167,10 @@ export const getOrderHistory = async (req: Request, res: Response) => {
 
 export const updateshippinginfo = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
 
   const {
@@ -207,7 +217,10 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
 
 export const getOrderDetails = async (req: Request, res: Response) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({
+      message: 'Unauthorized',
+      code: AuthErrorCode.TOKEN_EXPIRED,
+    });
   }
 
   const { order_id } = req.params;

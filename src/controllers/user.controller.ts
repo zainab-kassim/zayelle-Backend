@@ -13,6 +13,7 @@ import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import crypto from 'crypto';
 import logger from '../middleware/logger';
+import { AuthErrorCode } from '../constants/authErrorCodes';
 import { issueSession } from '../utils/issueSession';
 import { OAuth2Client } from 'google-auth-library';
 import { sendPasswordResetEmail } from '../utils/sendPasswordResetEmail';
@@ -70,20 +71,29 @@ export const UserLogin = async (req: Request, res: Response) => {
 
   if (!user || userError) {
     logger.error({ userError }, 'Invalid email or password');
-    return res.status(401).json({ message: 'Invalid email or password' });
+    return res.status(401).json({
+      message: 'Invalid email or password',
+      code: AuthErrorCode.INVALID_CREDENTIALS,
+    });
   }
 
-  // Google-only accounts have no password to compare against
+  // Google-only accounts have no password to compare against. Return the same
+  // generic response as a wrong password so we don't reveal that this email
+  // exists or that it was registered through Google.
   if (!user.password) {
     return res.status(401).json({
-      message: 'This account uses Google sign-in. Continue with Google.',
+      message: 'Invalid email or password',
+      code: AuthErrorCode.INVALID_CREDENTIALS,
     });
   }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     logger.error({ userError }, 'Invalid email or password');
-    return res.status(401).json({ message: 'Invalid email or password' });
+    return res.status(401).json({
+      message: 'Invalid email or password',
+      code: AuthErrorCode.INVALID_CREDENTIALS,
+    });
   }
 
   await issueSession(res, { id: user.id, email: user.email });
@@ -111,18 +121,25 @@ export const GoogleAuth = async (req: Request, res: Response) => {
     tokenInfo = await googleClient.getTokenInfo(googleAccessToken);
   } catch (err) {
     logger.error({ err }, 'Invalid Google access token');
-    return res.status(401).json({ message: 'Invalid Google sign-in' });
+    return res.status(401).json({
+      message: 'Invalid Google sign-in',
+      code: AuthErrorCode.GOOGLE_AUTH_FAILED,
+    });
   }
 
   // `aud` must be our client id — proves the token was minted for this app
   if (tokenInfo.aud !== GoogleClientId) {
-    return res.status(401).json({ message: 'Invalid Google sign-in' });
+    return res.status(401).json({
+      message: 'Invalid Google sign-in',
+      code: AuthErrorCode.GOOGLE_AUTH_FAILED,
+    });
   }
 
   if (!tokenInfo.email || !tokenInfo.email_verified) {
-    return res
-      .status(401)
-      .json({ message: 'Your Google email is not verified' });
+    return res.status(401).json({
+      message: 'Your Google email is not verified',
+      code: AuthErrorCode.GOOGLE_EMAIL_UNVERIFIED,
+    });
   }
 
   const email = tokenInfo.email;
@@ -208,7 +225,7 @@ export const refreshToken = async (req: Request, res: Response) => {
   if (!refreshToken) {
     return res.status(401).json({
       message: 'No refresh token provided',
-      code: 'REFRESH_TOKEN_NOT_FOUND',
+      code: AuthErrorCode.REFRESH_TOKEN_NOT_FOUND,
     });
   }
 
@@ -224,9 +241,10 @@ export const refreshToken = async (req: Request, res: Response) => {
     RefreshSecretKey,
     async (err: VerifyErrors | null, user: JwtPayload | string | undefined) => {
       if (err)
-        return res
-          .status(403)
-          .json({ message: 'Session timed out. Please log in again.' });
+        return res.status(403).json({
+          message: 'Session timed out. Please log in again.',
+          code: AuthErrorCode.REFRESH_TOKEN_INVALID,
+        });
       const payload = user as JwtPayload;
 
       const hashedIncomingToken = crypto
@@ -251,6 +269,7 @@ export const refreshToken = async (req: Request, res: Response) => {
         // token not in DB - could be stolen/reused
         return res.status(403).json({
           message: 'Invalid, Please log in again',
+          code: AuthErrorCode.REFRESH_TOKEN_INVALID,
         });
       }
 
