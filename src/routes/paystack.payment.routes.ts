@@ -8,29 +8,21 @@ import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { isLoggedIn } from '../middleware/isLoggedIn';
 import { paystackPaymentSchema } from '../schemas/paystack.payment.schema';
 import { validateUser } from '../middleware/validate';
-import { paymentLimiter } from '../middleware/consume';
 
 const router = Router();
 
 router.post(
   '/initialize',
   isLoggedIn,
-  paymentLimiter,
   validateUser(paystackPaymentSchema),
   handleAsyncErr(initializePayment),
 );
 router.post(
   '/cancel-checkout',
   isLoggedIn,
-  paymentLimiter,
   validateUser(paystackPaymentSchema),
   handleAsyncErr(cancelPaystackCheckout),
 );
-router.get(
-  '/verify/:reference',
-  isLoggedIn,
-  paymentLimiter,
-  handleAsyncErr(verifyPayment),
-);
+router.get('/verify/:reference', isLoggedIn, handleAsyncErr(verifyPayment));
 
 export default router;
