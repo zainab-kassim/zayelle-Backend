@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { Request, Response } from 'express';
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import logger from '../middleware/logger';
 import { handlePostPayment } from '../utils/handlePostPayment';
 import { AuthErrorCode } from '../constants/authErrorCodes';
@@ -15,7 +15,7 @@ export const initializePayment = async (req: Request, res: Response) => {
 
   const email = req.user.email;
   const { order_id } = req.body;
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select('totalLocal,reference,currency')
     .eq('id', order_id)
@@ -59,7 +59,7 @@ export const initializePayment = async (req: Request, res: Response) => {
     }
   }
 
-  const { error: rpcError } = await supabase.rpc(
+  const { error: rpcError } = await supabaseAdmin.rpc(
     'decrement_inventory_on_checkout',
     {
       p_order_id: order_id,
@@ -112,7 +112,7 @@ export const initializePayment = async (req: Request, res: Response) => {
     );
 
     const { error: updated_order_error, data: _updated_order_data } =
-      await supabase
+      await supabaseAdmin
         .from('order')
         .update({ reference })
         .eq('id', order_id)
@@ -120,7 +120,7 @@ export const initializePayment = async (req: Request, res: Response) => {
         .single();
 
     if (updated_order_error) {
-      const { error: restoreError } = await supabase.rpc(
+      const { error: restoreError } = await supabaseAdmin.rpc(
         'increment_inventory_on_restore',
         { p_order_id: order_id },
       );
@@ -141,7 +141,7 @@ export const initializePayment = async (req: Request, res: Response) => {
       reference,
     });
   } catch (err) {
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       {
         p_order_id: order_id,
@@ -167,7 +167,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
   }
   const { reference } = req.params;
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select('status,id,cart_id')
     .eq('reference', reference)
@@ -188,14 +188,15 @@ export const verifyPayment = async (req: Request, res: Response) => {
     );
 
     if (data.data.status === 'success') {
-      const { data: updatedOrder, error: updated_order_error } = await supabase
-        .from('order')
-        .update({ status: 'success' })
-        .eq('reference', reference)
-        .eq('user_id', req.user.id)
-        .eq('status', 'pending')
-        .select('id')
-        .single();
+      const { data: updatedOrder, error: updated_order_error } =
+        await supabaseAdmin
+          .from('order')
+          .update({ status: 'success' })
+          .eq('reference', reference)
+          .eq('user_id', req.user.id)
+          .eq('status', 'pending')
+          .select('id')
+          .single();
 
       if (updated_order_error || !updatedOrder) {
         // webhook already processed this order first, nothing left to do
@@ -208,7 +209,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
         await handlePostPayment(order.id, order.cart_id);
       } catch (err) {
         // rollback the status so paystack can safely retry
-        await supabase
+        await supabaseAdmin
           .from('order')
           .update({ status: 'pending' })
           .eq('id', order.id);
@@ -231,14 +232,15 @@ export const verifyPayment = async (req: Request, res: Response) => {
     }
 
     if (data.data.status === 'failed' || data.data.status === 'abandoned') {
-      const { data: updatedOrder, error: updated_order_error } = await supabase
-        .from('order')
-        .update({ status: `${data.data.status}` })
-        .eq('reference', reference)
-        .eq('user_id', req.user.id)
-        .eq('status', 'pending')
-        .select('id')
-        .single();
+      const { data: updatedOrder, error: updated_order_error } =
+        await supabaseAdmin
+          .from('order')
+          .update({ status: `${data.data.status}` })
+          .eq('reference', reference)
+          .eq('user_id', req.user.id)
+          .eq('status', 'pending')
+          .select('id')
+          .single();
 
       if (updated_order_error || !updatedOrder) {
         // webhook already processed this order first, nothing left to do
@@ -248,7 +250,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
         });
       }
 
-      const { error: restoreError } = await supabase.rpc(
+      const { error: restoreError } = await supabaseAdmin.rpc(
         'increment_inventory_on_restore',
         { p_order_id: order.id },
       );
@@ -289,14 +291,15 @@ export const verifyPayment = async (req: Request, res: Response) => {
     );
 
     if (data.data.status === 'success') {
-      const { data: updatedOrder, error: updated_order_error } = await supabase
-        .from('order')
-        .update({ status: 'success' })
-        .eq('reference', reference)
-        .eq('user_id', req.user.id)
-        .neq('status', 'success')
-        .select('id')
-        .single();
+      const { data: updatedOrder, error: updated_order_error } =
+        await supabaseAdmin
+          .from('order')
+          .update({ status: 'success' })
+          .eq('reference', reference)
+          .eq('user_id', req.user.id)
+          .neq('status', 'success')
+          .select('id')
+          .single();
 
       if (updatedOrder && !updated_order_error) {
         try {
@@ -333,7 +336,7 @@ export const cancelPaystackCheckout = async (req: Request, res: Response) => {
   }
   const { order_id } = req.body;
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select('id,status,reference,cart_id')
     .eq('id', order_id)
@@ -367,14 +370,15 @@ export const cancelPaystackCheckout = async (req: Request, res: Response) => {
   }
 
   if (paystackStatus === 'failed' || paystackStatus === 'abandoned') {
-    const { data: updatedOrder, error: updated_order_error } = await supabase
-      .from('order')
-      .update({ status: paystackStatus })
-      .eq('id', order.id)
-      .eq('user_id', req.user.id)
-      .eq('status', 'pending')
-      .select('id')
-      .single();
+    const { data: updatedOrder, error: updated_order_error } =
+      await supabaseAdmin
+        .from('order')
+        .update({ status: paystackStatus })
+        .eq('id', order.id)
+        .eq('user_id', req.user.id)
+        .eq('status', 'pending')
+        .select('id')
+        .single();
 
     if (updated_order_error || !updatedOrder) {
       // webhook already handled it
@@ -383,7 +387,7 @@ export const cancelPaystackCheckout = async (req: Request, res: Response) => {
         .json({ message: 'Already processed', status: paystackStatus });
     }
 
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       { p_order_id: order.id },
     );

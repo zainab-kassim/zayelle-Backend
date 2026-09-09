@@ -1,4 +1,4 @@
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
@@ -19,7 +19,7 @@ export const addtocart = async (req: Request, res: Response) => {
 
   const { productid, quantity, size } = req.body;
 
-  const { data: product, error: productError } = await supabase
+  const { data: product, error: productError } = await supabaseAdmin
     .from('products')
     .select('price')
     .eq('id', productid)
@@ -29,7 +29,7 @@ export const addtocart = async (req: Request, res: Response) => {
     logger.error({ productError }, 'invalid product');
     return res.status(404).json({ message: 'invalid product' });
   }
-  const { data: existingcart } = await supabase
+  const { data: existingcart } = await supabaseAdmin
     .from('carts')
     .select()
     .eq('user_id', userid)
@@ -38,7 +38,7 @@ export const addtocart = async (req: Request, res: Response) => {
 
   if (existingcart) {
     const { data: existingcartitems, error: existingcartitemserror } =
-      await supabase
+      await supabaseAdmin
         .from('cart_items')
         .select()
         .eq('cart_id', existingcart.id)
@@ -61,7 +61,7 @@ export const addtocart = async (req: Request, res: Response) => {
       const updatedPrice = product.price * updatedQuantity;
 
       const { data: updatedCartItem, error: updateCartItemError } =
-        await supabase
+        await supabaseAdmin
           .from('cart_items')
           .update({ quantity: updatedQuantity, price: updatedPrice })
           .select('id,quantity, price')
@@ -86,7 +86,7 @@ export const addtocart = async (req: Request, res: Response) => {
       });
     }
 
-    const { data: cartitem, error: cartitemerror } = await supabase
+    const { data: cartitem, error: cartitemerror } = await supabaseAdmin
       .from('cart_items')
       .insert({
         cart_id: existingcart.id,
@@ -112,7 +112,7 @@ export const addtocart = async (req: Request, res: Response) => {
     });
   }
 
-  const { data: newcart, error: newcarterror } = await supabase
+  const { data: newcart, error: newcarterror } = await supabaseAdmin
     .from('carts')
     .insert({
       user_id: userid,
@@ -127,7 +127,7 @@ export const addtocart = async (req: Request, res: Response) => {
       .json({ message: 'Error creating new cart', newcart });
   }
 
-  const { data: cartitem, error: cartitemerror } = await supabase
+  const { data: cartitem, error: cartitemerror } = await supabaseAdmin
     .from('cart_items')
     .insert({
       cart_id: newcart.id,
@@ -168,7 +168,7 @@ export const updatecartquantity = async (req: Request, res: Response) => {
 
   const { cartitemid, quantity } = req.body;
   const { data: existingCartItem, error: existingCartItemError } =
-    await supabase
+    await supabaseAdmin
       .from('cart_items')
       .select('id, unitprice, carts!inner(user_id)')
       .eq('id', cartitemid)
@@ -182,12 +182,13 @@ export const updatecartquantity = async (req: Request, res: Response) => {
 
   const newPrice = existingCartItem.unitprice * quantity;
 
-  const { data: updatedCartItem, error: updateCartItemError } = await supabase
-    .from('cart_items')
-    .update({ quantity, price: newPrice })
-    .eq('id', cartitemid)
-    .select('id, quantity, price')
-    .single();
+  const { data: updatedCartItem, error: updateCartItemError } =
+    await supabaseAdmin
+      .from('cart_items')
+      .update({ quantity, price: newPrice })
+      .eq('id', cartitemid)
+      .select('id, quantity, price')
+      .single();
 
   if (updateCartItemError || !updatedCartItem) {
     logger.error({ updateCartItemError }, 'Error updating cart item quantity');
@@ -214,7 +215,7 @@ export const deletecartitem = async (req: Request, res: Response) => {
 
   const cartitemid = req.params.id;
 
-  const { data: cart, error: carterror } = await supabase
+  const { data: cart, error: carterror } = await supabaseAdmin
     .from('carts')
     .select('id')
     .eq('user_id', req.user.id)
@@ -225,13 +226,14 @@ export const deletecartitem = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Cart not found' });
   }
 
-  const { data: deletedcartitem, error: deletedcartitemerror } = await supabase
-    .from('cart_items')
-    .delete()
-    .eq('id', cartitemid)
-    .eq('cart_id', cart.id)
-    .select()
-    .single();
+  const { data: deletedcartitem, error: deletedcartitemerror } =
+    await supabaseAdmin
+      .from('cart_items')
+      .delete()
+      .eq('id', cartitemid)
+      .eq('cart_id', cart.id)
+      .select()
+      .single();
 
   if (deletedcartitemerror || !deletedcartitem) {
     logger.error({ deletedcartitemerror }, 'Error deleting cart item');
@@ -255,7 +257,7 @@ export const getcart = async (req: Request, res: Response) => {
   const rates = await getCachedRates();
   const rate = getRate(rates, currency);
 
-  const { data: existingcart, error: existingcarterror } = await supabase
+  const { data: existingcart, error: existingcarterror } = await supabaseAdmin
     .from('carts')
     .select(`*,user_id(fullName)`)
     .eq('user_id', userid)
@@ -264,7 +266,7 @@ export const getcart = async (req: Request, res: Response) => {
     logger.error({ existingcarterror }, 'Cart not found');
     return res.status(404).json({ message: 'Cart not found' });
   }
-  const { data: cartitems, error: cartitemserror } = await supabase
+  const { data: cartitems, error: cartitemserror } = await supabaseAdmin
     .from('cart_items')
     .select(`*,product:product_id(name,slug,image,description,color)`)
     .eq('cart_id', existingcart.id);

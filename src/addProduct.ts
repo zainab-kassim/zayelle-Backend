@@ -1,4 +1,4 @@
-import { supabase } from './config/db';
+import { supabaseAdmin } from './config/supabaseAdmin';
 import { generateUniqueSlug } from './middleware/generateSlug';
 
 export async function addProduct() {
@@ -6,7 +6,7 @@ export async function addProduct() {
   const slug = await generateUniqueSlug(name);
 
   // Implementation for adding a product
-  await supabase.from('products').insert([
+  await supabaseAdmin.from('products').insert([
     {
       collectionid: 1,
       name: name,

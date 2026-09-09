@@ -1,4 +1,4 @@
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import logger from '../middleware/logger';
 
 export const handlePostPayment = async (
@@ -9,7 +9,7 @@ export const handlePostPayment = async (
   { clearCart = true }: { clearCart?: boolean } = {},
 ) => {
   // Fetch cart items
-  const { data: cartItems, error: cartItemsError } = await supabase
+  const { data: cartItems, error: cartItemsError } = await supabaseAdmin
     .from('cart_items')
     .select('*')
     .eq('cart_id', cart_id);
@@ -30,7 +30,7 @@ export const handlePostPayment = async (
     unit_price: item.unitprice,
   }));
 
-  const { error: orderItemsError } = await supabase
+  const { error: orderItemsError } = await supabaseAdmin
     .from('order_items')
     .upsert(itemsToInsert, {
       onConflict: 'order_id,product_id', // needs a unique constraint on these two columns
@@ -45,7 +45,7 @@ export const handlePostPayment = async (
   if (!clearCart) return;
 
   // Delete cart items
-  const { error: deletedCartItemsError } = await supabase
+  const { error: deletedCartItemsError } = await supabaseAdmin
     .from('cart_items')
     .delete()
     .eq('cart_id', cart_id);

@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import logger from '../middleware/logger';
 import { handlePostPayment } from '../utils/handlePostPayment';
 import { AuthErrorCode } from '../constants/authErrorCodes';
@@ -17,7 +17,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     });
   }
   const { order_id } = req.body;
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select('totalLocal,currency,checkoutSession_id')
     .eq('id', order_id)
@@ -57,7 +57,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     }
   }
 
-  const { error: rpcError } = await supabase.rpc(
+  const { error: rpcError } = await supabaseAdmin.rpc(
     'decrement_inventory_on_checkout',
     {
       p_order_id: order_id,
@@ -111,7 +111,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       },
     );
 
-    const { error: updatedOrderError } = await supabase
+    const { error: updatedOrderError } = await supabaseAdmin
       .from('order')
       .update({ checkoutSession_id: session.id })
       .eq('id', order_id)
@@ -119,7 +119,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       .single();
 
     if (updatedOrderError) {
-      const { error: restoreError } = await supabase.rpc(
+      const { error: restoreError } = await supabaseAdmin.rpc(
         'increment_inventory_on_restore',
         { p_order_id: order_id },
       );
@@ -139,7 +139,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       session_id: session.id,
     });
   } catch (err) {
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       {
         p_order_id: order_id,
@@ -165,7 +165,7 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
   }
   const session_id = req.params.session_id as string;
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select('status,checkoutSession_id,id,cart_id')
     .eq('checkoutSession_id', session_id)
@@ -181,14 +181,15 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status === 'paid') {
-      const { data: updatedOrder, error: updated_order_error } = await supabase
-        .from('order')
-        .update({ status: 'success' })
-        .eq('checkoutSession_id', session_id)
-        .eq('user_id', req.user.id)
-        .eq('status', 'pending')
-        .select('id')
-        .single();
+      const { data: updatedOrder, error: updated_order_error } =
+        await supabaseAdmin
+          .from('order')
+          .update({ status: 'success' })
+          .eq('checkoutSession_id', session_id)
+          .eq('user_id', req.user.id)
+          .eq('status', 'pending')
+          .select('id')
+          .single();
 
       if (updated_order_error || !updatedOrder) {
         // webhook already processed this order first, nothing left to do
@@ -201,7 +202,7 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
         await handlePostPayment(order.id, order.cart_id);
       } catch (err) {
         // rollback the status so stripe can safely retry
-        await supabase
+        await supabaseAdmin
           .from('order')
           .update({ status: 'pending' })
           .eq('id', order.id);
@@ -217,14 +218,15 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
     }
 
     if (session.status === 'expired') {
-      const { data: updatedOrder, error: updated_order_error } = await supabase
-        .from('order')
-        .update({ status: 'canceled' })
-        .eq('checkoutSession_id', session_id)
-        .eq('user_id', req.user.id)
-        .eq('status', 'pending')
-        .select('id')
-        .single();
+      const { data: updatedOrder, error: updated_order_error } =
+        await supabaseAdmin
+          .from('order')
+          .update({ status: 'canceled' })
+          .eq('checkoutSession_id', session_id)
+          .eq('user_id', req.user.id)
+          .eq('status', 'pending')
+          .select('id')
+          .single();
 
       if (updated_order_error || !updatedOrder) {
         // webhook already processed this order first, nothing left to do
@@ -234,7 +236,7 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
         });
       }
 
-      const { error: restoreError } = await supabase.rpc(
+      const { error: restoreError } = await supabaseAdmin.rpc(
         'increment_inventory_on_restore',
         {
           p_order_id: order.id,
@@ -276,14 +278,15 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
     if (session.payment_status === 'paid') {
-      const { data: updatedOrder, error: updated_order_error } = await supabase
-        .from('order')
-        .update({ status: 'success' })
-        .eq('checkoutSession_id', session_id)
-        .eq('user_id', req.user.id)
-        .neq('status', 'success')
-        .select('id')
-        .single();
+      const { data: updatedOrder, error: updated_order_error } =
+        await supabaseAdmin
+          .from('order')
+          .update({ status: 'success' })
+          .eq('checkoutSession_id', session_id)
+          .eq('user_id', req.user.id)
+          .neq('status', 'success')
+          .select('id')
+          .single();
 
       if (updatedOrder && !updated_order_error) {
         try {
@@ -320,7 +323,7 @@ export const cancelCheckout = async (req: Request, res: Response) => {
   }
   const { order_id } = req.body;
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select('id,status,checkoutSession_id')
     .eq('id', order_id)
@@ -351,7 +354,7 @@ export const cancelCheckout = async (req: Request, res: Response) => {
 
   // flip to canceled — guarded on 'pending' so it's a no-op if the
   // checkout.session.expired webhook raced us here first
-  const { data: canceled, error: cancelError } = await supabase
+  const { data: canceled, error: cancelError } = await supabaseAdmin
     .from('order')
     .update({ status: 'canceled' })
     .eq('id', order.id)
@@ -360,7 +363,7 @@ export const cancelCheckout = async (req: Request, res: Response) => {
     .single();
 
   if (canceled && !cancelError) {
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       { p_order_id: order.id },
     );

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { supabase } from '../../config/db';
+import { supabaseAdmin } from '../../config/supabaseAdmin';
 import { createHmac } from 'crypto';
 import { handlePostPayment } from '../../utils/handlePostPayment';
 import logger from '../../middleware/logger';
@@ -24,7 +24,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
     // otherwise a stray event sharing this order's metadata can flip the
     // order before the real charge.success for THIS attempt arrives, and
     // that success update then silently no-ops since status isn't 'pending'
-    const { data: order, error } = await supabase
+    const { data: order, error } = await supabaseAdmin
       .from('order')
       .update({ status: 'failed' })
       .eq('id', orderId)
@@ -39,9 +39,12 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
     }
 
-    const restoreError = await supabase.rpc('increment_inventory_on_restore', {
-      p_order_id: orderId,
-    });
+    const restoreError = await supabaseAdmin.rpc(
+      'increment_inventory_on_restore',
+      {
+        p_order_id: orderId,
+      },
+    );
     if (restoreError) {
       logger.error(
         { error: restoreError },
@@ -65,7 +68,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   if (event.event === 'charge.abandoned') {
     const orderId = data.metadata.orderId;
 
-    const { data: order, error } = await supabase
+    const { data: order, error } = await supabaseAdmin
       .from('order')
       .update({ status: 'abandoned' })
       .eq('id', orderId)
@@ -80,7 +83,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
     }
 
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       { p_order_id: orderId },
     );
@@ -112,7 +115,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   const reference = data.reference;
 
   const { data: updatedorderstatus, error: updatedorderstatuserror } =
-    await supabase
+    await supabaseAdmin
       .from('order')
       .update({ status: 'success' })
       .eq('reference', reference)
@@ -132,7 +135,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
     await handlePostPayment(updatedorderstatus.id, updatedorderstatus.cart_id);
   } catch (err) {
     // rollback the status so paystack can safely retry
-    await supabase
+    await supabaseAdmin
       .from('order')
       .update({ status: 'pending' })
       .eq('id', updatedorderstatus.id);

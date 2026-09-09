@@ -1,4 +1,4 @@
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
@@ -29,7 +29,7 @@ export const createorder = async (req: Request, res: Response) => {
     country,
   } = req.body;
 
-  const { data: existingcart, error: existingcarterror } = await supabase
+  const { data: existingcart, error: existingcarterror } = await supabaseAdmin
     .from('carts')
     .select('id,cart_items(price)')
     .eq('user_id', user_id)
@@ -45,7 +45,7 @@ export const createorder = async (req: Request, res: Response) => {
     0,
   );
 
-  const { data: neworder, error: newordererror } = await supabase
+  const { data: neworder, error: newordererror } = await supabaseAdmin
     .from('order')
     .insert({
       user_id,
@@ -104,7 +104,7 @@ export const getOrderHistory = async (req: Request, res: Response) => {
   const start = (page - 1) * limit;
   const end = start + limit - 1;
 
-  let query = supabase
+  let query = supabaseAdmin
     .from('order')
     .select(`*, order_items(*, product_id(name, slug, image, description))`, {
       count: 'exact',
@@ -130,7 +130,7 @@ export const getOrderHistory = async (req: Request, res: Response) => {
   // current filter/page, so they're queried separately (count-only, no rows)
   const [successCount, pendingCount, cancelledCount] = await Promise.all(
     Object.values(STATUS_BUCKETS).map((statuses) =>
-      supabase
+      supabaseAdmin
         .from('order')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', user_id)
@@ -185,7 +185,7 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     country,
   } = req.body;
 
-  const { data: updatedorder, error: updatedordererror } = await supabase
+  const { data: updatedorder, error: updatedordererror } = await supabaseAdmin
     .from('order')
     .update({
       street_address,
@@ -225,7 +225,7 @@ export const getOrderDetails = async (req: Request, res: Response) => {
 
   const { order_id } = req.params;
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
     .select(`*, order_items(*, product_id(name, slug, image, description))`)
     .eq('id', order_id)

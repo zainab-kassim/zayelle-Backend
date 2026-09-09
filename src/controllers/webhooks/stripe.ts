@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { supabase } from '../../config/db';
+import { supabaseAdmin } from '../../config/supabaseAdmin';
 import stripe from 'stripe';
 import { handlePostPayment } from '../../utils/handlePostPayment';
 import logger from '../../middleware/logger';
@@ -17,7 +17,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   if (event.type === 'checkout.session.expired') {
     const session = event.data.object;
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('order')
       .update({ status: 'canceled' })
       .eq('checkoutSession_id', session.id)
@@ -30,7 +30,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' });
     }
 
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       { p_order_id: order.id },
     );
@@ -51,7 +51,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
   if (event.type === 'checkout.session.async_payment_failed') {
     const session = event.data.object;
 
-    const { data: order, error: orderError } = await supabase
+    const { data: order, error: orderError } = await supabaseAdmin
       .from('order')
       .update({ status: 'failed' })
       .eq('checkoutSession_id', session.id)
@@ -63,7 +63,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' });
     }
 
-    const { error: restoreError } = await supabase.rpc(
+    const { error: restoreError } = await supabaseAdmin.rpc(
       'increment_inventory_on_restore',
       { p_order_id: order.id },
     );
@@ -106,7 +106,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
 
   // checkoutSession_id holds this exact cs_… id (stored at session creation) —
   // a unique per-attempt match, so no amount/currency guard needed
-  const { data: updatedOrder, error: updatedOrderError } = await supabase
+  const { data: updatedOrder, error: updatedOrderError } = await supabaseAdmin
     .from('order')
     .update({ status: 'success' })
     .eq('checkoutSession_id', session.id)
@@ -123,7 +123,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     await handlePostPayment(updatedOrder.id, updatedOrder.cart_id);
   } catch (err) {
     // rollback the status so Stripe can safely retry
-    await supabase
+    await supabaseAdmin
       .from('order')
       .update({ status: 'pending' })
       .eq('id', updatedOrder.id);

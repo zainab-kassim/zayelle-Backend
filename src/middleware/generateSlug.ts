@@ -1,12 +1,12 @@
 import slugify from 'slugify';
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 
 export async function generateUniqueSlug(name: string) {
   let baseSlug = slugify(name, { lower: true, strict: true });
   let counter = 1;
 
   while (true) {
-    const { data: foundSlug, error } = await supabase
+    const { data: foundSlug, error } = await supabaseAdmin
       .from('products')
       .select()
       .eq('slug', baseSlug);

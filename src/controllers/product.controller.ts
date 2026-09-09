@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { supabase } from '../config/db';
+import { supabaseAdmin } from '../config/supabaseAdmin';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
 import logger from '../middleware/logger';
@@ -9,7 +9,7 @@ export const GetProducts = async (req: Request, res: Response) => {
   const rates = await getCachedRates();
   const rate = getRate(rates, currency);
 
-  const { data: products, error: productError } = await supabase
+  const { data: products, error: productError } = await supabaseAdmin
     .from('products')
     .select(
       'name, slug, description, price, size, quantity, image, collections(slug)',
@@ -43,7 +43,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   const rate = getRate(rates, currency);
   const collectionSlug = req.params.collectionSlug;
 
-  const { data: CollectionId, error: collectionError } = await supabase
+  const { data: CollectionId, error: collectionError } = await supabaseAdmin
     .from('collections')
     .select('id')
     .eq('slug', collectionSlug)
@@ -53,7 +53,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Collection not found' });
   }
 
-  const { data: CollectionProducts, error: producterror } = await supabase
+  const { data: CollectionProducts, error: producterror } = await supabaseAdmin
     .from('products')
     .select('id,name,slug,description,price,size,quantity,image')
     .eq('collectionid', CollectionId.id);
@@ -89,7 +89,7 @@ export const GetProductByName = async (req: Request, res: Response) => {
   const rate = getRate(rates, currency);
   const Slug = req.params.slug;
 
-  const { data: product, error: productError } = await supabase
+  const { data: product, error: productError } = await supabaseAdmin
     .from('products')
     .select(
       'id,name,slug,description,price,size,quantity,image,collections(name)',

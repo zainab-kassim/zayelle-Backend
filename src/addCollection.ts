@@ -1,8 +1,8 @@
-import { supabase } from './config/db';
+import { supabaseAdmin } from './config/supabaseAdmin';
 import logger from './middleware/logger';
 
 export async function generateCollection() {
-  const { data: NewCollection, error } = await supabase
+  const { data: NewCollection, error } = await supabaseAdmin
     .from('collections')
     .insert({
       name: 'Ember collection',
