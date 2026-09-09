@@ -14,14 +14,30 @@ describe('User Routes', () => {
       email: process.env.TEST_USER_EMAIL,
       password: process.env.TEST_USER_PASSWORD,
     });
-    expect(response.status).toBe(201);
-    expect(response.body.message).toBe('user signed up successfully');
+    // The fixture account is long-lived and shared across test runs rather
+    // than re-created every time, so a rerun hitting the existing-account
+    // 409 is expected too — what the rest of the suite needs is just that
+    // the account exists and is reachable with TEST_USER_PASSWORD.
+    expect([201, 409]).toContain(response.status);
+    if (response.status === 201) {
+      expect(response.body.message).toBe('user signed up successfully');
+    }
   });
 });
 
 describe('User Routes', () => {
   let refreshtoken: string;
   let accesstoken: string;
+  let testUserId: number;
+
+  beforeAll(async () => {
+    const { data } = await supabaseAdmin
+      .from('users')
+      .select('id')
+      .eq('email', process.env.TEST_USER_EMAIL)
+      .single();
+    testUserId = data!.id;
+  });
 
   it('Login user', async () => {
     const response = await request(app).post('/api/auth/login').send({
@@ -41,7 +57,7 @@ describe('User Routes', () => {
     const { data: sessionBefore } = await supabaseAdmin
       .from('sessions')
       .select('refresh_token')
-      .eq('user_id', 11)
+      .eq('user_id', testUserId)
       .single();
 
     const refreshResponse = await request(app)
@@ -59,7 +75,7 @@ describe('User Routes', () => {
     const { data: sessionAfter } = await supabaseAdmin
       .from('sessions')
       .select('refresh_token')
-      .eq('user_id', 11)
+      .eq('user_id', testUserId)
       .single();
 
     expect(sessionBefore?.refresh_token).not.toBe(sessionAfter?.refresh_token);
@@ -175,4 +191,27 @@ describe('Password reset', () => {
       .update({ password: restored })
       .eq('id', userId);
   });
+});
+
+// This suite runs against the same Supabase project the app runs against,
+// using a long-lived shared fixture account (TEST_USER_EMAIL) rather than a
+// disposable one — deleting that account isn't safe here (other tables can
+// reference it) and isn't the goal anyway. What each run *does* leave behind
+// is its own sessions/reset-token rows if a test fails partway through
+// before the normal logout/reset flow would have cleared them. Sweep those
+// up so repeated runs don't pile up rows that were never actually cleaned.
+afterAll(async () => {
+  const { data: testUser } = await supabaseAdmin
+    .from('users')
+    .select('id')
+    .eq('email', process.env.TEST_USER_EMAIL)
+    .single();
+
+  if (!testUser) return;
+
+  await supabaseAdmin.from('sessions').delete().eq('user_id', testUser.id);
+  await supabaseAdmin
+    .from('password_reset_tokens')
+    .delete()
+    .eq('user_id', testUser.id);
 });
