@@ -7,7 +7,6 @@ import {
   RemoveRefreshTokenCookieOptions,
   RemoveAccessTokenCookieOptions,
 } from '../utils/authCookies';
-import { supabase } from '../config/db';
 import { RefreshSecretKey, GoogleClientId } from '../auth/config';
 import jwt, { JwtPayload, VerifyErrors } from 'jsonwebtoken';
 import { supabaseAdmin } from '../config/supabaseAdmin';
@@ -23,7 +22,7 @@ const googleClient = new OAuth2Client(GoogleClientId);
 export const UserSignup = async (req: Request, res: Response) => {
   const { fullName, email, password } = req.body;
 
-  const { data: existingUser } = await supabase
+  const { data: existingUser } = await supabaseAdmin
     .from('users')
     .select()
     .eq('email', email)
@@ -37,7 +36,7 @@ export const UserSignup = async (req: Request, res: Response) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const { data: newUser, error: newUserError } = await supabase
+  const { data: newUser, error: newUserError } = await supabaseAdmin
     .from('users')
     .insert({
       fullName,
@@ -48,6 +47,14 @@ export const UserSignup = async (req: Request, res: Response) => {
     .single();
 
   if (newUserError) {
+    // 23505 = Postgres unique-violation. A concurrent signup for the same
+    // email won the race between the existence check above and this insert —
+    // the DB constraint is the real source of truth, not that earlier check.
+    if (newUserError.code === '23505') {
+      return res.status(409).json({
+        message: 'Account already exists. Please log in instead.',
+      });
+    }
     logger.error({ newUserError }, 'Error creating user');
     return res.status(500).json({ message: 'Error creating user' });
   }
@@ -63,7 +70,7 @@ export const UserSignup = async (req: Request, res: Response) => {
 export const UserLogin = async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
-  const { data: user, error: userError } = await supabase
+  const { data: user, error: userError } = await supabaseAdmin
     .from('users')
     .select()
     .eq('email', email)
@@ -164,7 +171,7 @@ export const GoogleAuth = async (req: Request, res: Response) => {
   }
 
   // find-or-create: existing row → this is a login; no row → this is a signup
-  const { data: existingUser } = await supabase
+  const { data: existingUser } = await supabaseAdmin
     .from('users')
     .select()
     .eq('email', email)
@@ -173,17 +180,33 @@ export const GoogleAuth = async (req: Request, res: Response) => {
   let user = existingUser;
 
   if (!user) {
-    const { data: newUser, error: newUserError } = await supabase
+    const { data: newUser, error: newUserError } = await supabaseAdmin
       .from('users')
       .insert({ fullName, email })
       .select()
       .single();
 
-    if (newUserError || !newUser) {
+    if (newUserError?.code === '23505') {
+      // 23505 = Postgres unique-violation. A concurrent Google sign-in for
+      // the same new email won the race — the row now exists, so fetch it
+      // and log in with it instead of failing the request.
+      const { data: raceWinner } = await supabaseAdmin
+        .from('users')
+        .select()
+        .eq('email', email)
+        .single();
+      user = raceWinner;
+    } else if (newUserError || !newUser) {
       logger.error({ newUserError }, 'Error creating Google user');
       return res.status(500).json({ message: 'Error creating user' });
+    } else {
+      user = newUser;
     }
-    user = newUser;
+
+    if (!user) {
+      logger.error('Could not create or find Google user after race');
+      return res.status(500).json({ message: 'Error creating user' });
+    }
   }
 
   await issueSession(res, { id: user.id, email: user.email });
@@ -232,7 +255,7 @@ export const refreshToken = async (req: Request, res: Response) => {
   if (!RefreshSecretKey) {
     return res.status(500).json({
       message: 'Refresh token secret key not found',
-      code: 'REFRESH_TOKEN_SECRET_KEY_NOT_CONFIGURED',
+      code: AuthErrorCode.REFRESH_TOKEN_SECRET_KEY_NOT_CONFIGURED,
     });
   }
 
@@ -327,7 +350,7 @@ export const ForgotPassword = async (req: Request, res: Response) => {
         'If an account exists for that email, a password reset link has been sent.',
     });
 
-  const { data: user } = await supabase
+  const { data: user } = await supabaseAdmin
     .from('users')
     .select('id, email, password')
     .eq('email', email)

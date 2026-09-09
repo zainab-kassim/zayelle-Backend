@@ -23,6 +23,10 @@ export const AuthErrorCode = {
 
   // Refresh token failed verification or is no longer in the session store.
   REFRESH_TOKEN_INVALID: 'REFRESH_TOKEN_INVALID',
+
+  // Server misconfiguration — JWT_REFRESH_TOKEN_SECRET_KEY isn't set.
+  REFRESH_TOKEN_SECRET_KEY_NOT_CONFIGURED:
+    'REFRESH_TOKEN_SECRET_KEY_NOT_CONFIGURED',
 } as const;
 
 export type AuthErrorCode = (typeof AuthErrorCode)[keyof typeof AuthErrorCode];
