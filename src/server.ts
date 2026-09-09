@@ -21,7 +21,7 @@ import bookingRouter from './routes/bookmeeting.routes';
 const PORT = 4000;
 
 // Load environment variables if not in production
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'Production') {
   dotenv.config();
 }
 
