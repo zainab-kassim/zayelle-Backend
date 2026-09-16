@@ -11,11 +11,12 @@ export const Subscribe = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Something went wrong' });
   }
 
-  // Only email first-time subscribers — re-submitting an existing email
-  // still succeeds, but doesn't send a second welcome email.
-  if (result.status === 'subscribed') {
-    await sendNewsletterWelcomeEmail(email);
+  if (result.status === 'already_subscribed') {
+    return res.status(200).json({ message: "You're already on the list." });
   }
+
+  // Only email first-time subscribers.
+  await sendNewsletterWelcomeEmail(email);
 
   res
     .status(200)

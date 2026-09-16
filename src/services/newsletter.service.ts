@@ -13,13 +13,35 @@ const UNIQUE_VIOLATION = '23505';
 export async function subscribeToNewsletter(
   email: string,
 ): Promise<SubscribeResult> {
-  const { error } = await supabaseAdmin.from('newsletters').insert({ email });
+  // Explicit check first — the live table has no unique constraint on
+  // email, so a bare insert would happily create duplicates instead of
+  // erroring with 23505.
+  const { data: existing, error: lookupError } = await supabaseAdmin
+    .from('newsletters')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
 
-  if (error) {
-    if (error.code === UNIQUE_VIOLATION) {
+  if (lookupError) {
+    logger.error({ lookupError }, 'Error checking newsletter subscriber');
+    return { status: 'error' };
+  }
+
+  if (existing) {
+    return { status: 'already_subscribed' };
+  }
+
+  const { error: insertError } = await supabaseAdmin
+    .from('newsletters')
+    .insert({ email });
+
+  if (insertError) {
+    // Still handled in case a unique constraint gets added later and two
+    // requests race between the check above and this insert.
+    if (insertError.code === UNIQUE_VIOLATION) {
       return { status: 'already_subscribed' };
     }
-    logger.error({ error }, 'Error saving newsletter subscriber');
+    logger.error({ insertError }, 'Error saving newsletter subscriber');
     return { status: 'error' };
   }
 
