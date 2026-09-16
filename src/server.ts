@@ -18,6 +18,7 @@ import logger from './middleware/logger';
 import { cleanupJob } from './jobs/cleanup';
 import currencyRoutes from './routes/currency.routes';
 import bookingRouter from './routes/bookmeeting.routes';
+import newsletterRoutes from './routes/newsletter.routes';
 const PORT = 4000;
 
 // Load environment variables if not in production
@@ -84,6 +85,9 @@ app.use('/api/order', throttle, orderRoutes);
 
 // Middleware to use booking routes
 app.use('/api/booking', bookingRouter);
+
+// Middleware to use newsletter routes
+app.use('/api/newsletter', newsletterRoutes);
 
 //To handle errors
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
