@@ -5,7 +5,6 @@ export async function addProduct() {
   const name = 'Zayelle Ember Bubu';
   const slug = await generateUniqueSlug(name);
 
-  // Implementation for adding a product
   await supabaseAdmin.from('products').insert([
     {
       collectionid: 1,

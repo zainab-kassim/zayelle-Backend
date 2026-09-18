@@ -14,10 +14,8 @@ describe('User Routes', () => {
       email: process.env.TEST_USER_EMAIL,
       password: process.env.TEST_USER_PASSWORD,
     });
-    // The fixture account is long-lived and shared across test runs rather
-    // than re-created every time, so a rerun hitting the existing-account
-    // 409 is expected too — what the rest of the suite needs is just that
-    // the account exists and is reachable with TEST_USER_PASSWORD.
+    // fixture account is shared across runs, so a 409 (already exists) is
+    // fine too — we just need it to exist and be reachable
     expect([201, 409]).toContain(response.status);
     if (response.status === 201) {
       expect(response.body.message).toBe('user signed up successfully');
@@ -193,13 +191,9 @@ describe('Password reset', () => {
   });
 });
 
-// This suite runs against the same Supabase project the app runs against,
-// using a long-lived shared fixture account (TEST_USER_EMAIL) rather than a
-// disposable one — deleting that account isn't safe here (other tables can
-// reference it) and isn't the goal anyway. What each run *does* leave behind
-// is its own sessions/reset-token rows if a test fails partway through
-// before the normal logout/reset flow would have cleared them. Sweep those
-// up so repeated runs don't pile up rows that were never actually cleaned.
+// runs against the real Supabase project with a shared fixture account
+// (TEST_USER_EMAIL) — don't delete the user, just sweep up sessions/reset
+// tokens a failed run might leave behind
 afterAll(async () => {
   const { data: testUser } = await supabaseAdmin
     .from('users')

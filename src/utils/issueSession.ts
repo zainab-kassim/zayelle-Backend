@@ -7,15 +7,10 @@ import {
 } from './authCookies';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 
-/**
- * Mints a fresh access + refresh token for the user, stores the (hashed)
- * refresh token as a new `sessions` row, and sets both auth cookies.
- *
- * Shared by every handler that logs a user in (password signup, password
- * login, Google sign-in) so session behaviour can never drift between them.
- * Throws on a DB failure — the global error handler turns that into the
- * same `500 { message: 'Something went wrong' }` the callers used to return.
- */
+// Mints access + refresh tokens, stores the hashed refresh token as a new
+// `sessions` row, and sets both auth cookies. Shared by every login path
+// (signup, password login, Google) so session behavior stays consistent.
+// Throws on DB failure — the global error handler returns 500 for it.
 export const issueSession = async (
   res: Response,
   user: { id: number; email: string },

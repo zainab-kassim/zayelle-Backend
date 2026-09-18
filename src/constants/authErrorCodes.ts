@@ -1,15 +1,12 @@
-// Machine-readable codes attached to 401/403 auth responses so the client can
-// tell "your session expired, refresh and retry" apart from "your credentials
-// are wrong, show the error". The frontend axios interceptor only runs its
-// refresh-and-retry flow when it sees TOKEN_EXPIRED.
+// Codes on 401/403 auth responses so the client can tell "session expired,
+// retry" apart from "wrong credentials, show the error" — the frontend
+// interceptor only refreshes-and-retries on TOKEN_EXPIRED.
 export const AuthErrorCode = {
-  // No valid access token on the request — missing, malformed, or expired.
-  // This is the only code the frontend interceptor treats as "refresh & retry".
+  // missing/malformed/expired access token — the only code the frontend retries on
   TOKEN_EXPIRED: 'TOKEN_EXPIRED',
 
-  // Wrong password, unknown email, or an email that only has a Google account.
-  // Deliberately indistinguishable so we never reveal which accounts exist or
-  // how they were created.
+  // wrong password, unknown email, or Google-only account — kept
+  // indistinguishable on purpose, don't reveal which accounts exist
   INVALID_CREDENTIALS: 'INVALID_CREDENTIALS',
 
   // Google access token was missing, invalid, expired, or minted for another app.

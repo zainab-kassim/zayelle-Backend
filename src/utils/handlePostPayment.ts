@@ -8,7 +8,6 @@ export const handlePostPayment = async (
   // ordered in order_items, but leave the cart alone so the user can retry
   { clearCart = true }: { clearCart?: boolean } = {},
 ) => {
-  // Fetch cart items
   const { data: cartItems, error: cartItemsError } = await supabaseAdmin
     .from('cart_items')
     .select('*')
@@ -19,7 +18,6 @@ export const handlePostPayment = async (
     throw new Error('Error fetching cart items');
   }
 
-  // Insert into order_items
   const itemsToInsert = cartItems.map((item) => ({
     order_id,
     cart_id: item.cart_id,
@@ -44,7 +42,6 @@ export const handlePostPayment = async (
 
   if (!clearCart) return;
 
-  // Delete cart items
   const { error: deletedCartItemsError } = await supabaseAdmin
     .from('cart_items')
     .delete()

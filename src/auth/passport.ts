@@ -5,7 +5,6 @@ import { Strategy as JwtStrategy } from 'passport-jwt';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import logger from '../middleware/logger';
 
-// Function to extract token from cookies
 const extractJwtFromCookies = (req: Request) => {
   return req.cookies.accessToken;
 };

@@ -1,8 +1,7 @@
 import { resend, EMAIL_FROM } from '../config/resend';
 import logger from '../middleware/logger';
 
-// Best-effort transactional send. Never throws — a Resend hiccup shouldn't
-// turn a successful subscribe into a failed request.
+// best-effort — never throws, so a Resend hiccup can't fail the subscribe
 export const sendNewsletterWelcomeEmail = async (to: string): Promise<void> => {
   try {
     const { error } = await resend.emails.send({

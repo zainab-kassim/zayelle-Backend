@@ -1,11 +1,8 @@
 import { resend, EMAIL_FROM } from '../config/resend';
 import logger from '../middleware/logger';
 
-/**
- * Best-effort transactional send. Never throws and never surfaces failure:
- * the /forgot-password response is always a generic 200 so it can't be used
- * to probe which emails have accounts.
- */
+// best-effort — never throws; /forgot-password always returns a generic 200
+// so it can't be used to check which emails have accounts
 export const sendPasswordResetEmail = async (
   to: string,
   resetUrl: string,
