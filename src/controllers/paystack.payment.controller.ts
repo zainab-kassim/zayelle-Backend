@@ -97,9 +97,8 @@ export const initializePayment = async (req: Request, res: Response) => {
         metadata: {
           orderId: order_id,
           currency,
-          // Paystack redirects here (not callback_url) when the user clicks
-          // Cancel/X on the checkout page — lets the frontend restore inventory
-          // immediately instead of waiting for the delayed charge.abandoned webhook
+          // Paystack sends the user here (not callback_url) on Cancel/X — lets us
+          // restore inventory now instead of waiting on the delayed webhook
           cancel_action: `${frontendUrl}/checkout?canceled=1&order_id=${order_id}&provider=paystack`,
         },
       },
@@ -279,9 +278,8 @@ export const verifyPayment = async (req: Request, res: Response) => {
     }
   }
 
-  // order already left 'pending', but a stray webhook event (e.g. charge.abandoned
-  // firing around a session timeout) can have flipped it before the real
-  // charge.success landed — re-confirm with Paystack rather than trusting a cached status
+  // a stray webhook (e.g. charge.abandoned near a timeout) could've flipped
+  // this before the real charge.success landed — re-verify, don't trust the cache
   if (order.status !== 'success') {
     const { data } = await axios.get(
       `https://api.paystack.co/transaction/verify/${reference}`,
@@ -323,10 +321,9 @@ export const verifyPayment = async (req: Request, res: Response) => {
     .json({ message: 'Payment already processed', status: order.status });
 };
 
-// Hit by the frontend when Paystack redirects to cancel_action (user clicked
-// Cancel/X). Paystack has no "expire transaction" API, so we can only act once
-// Paystack itself reports the transaction abandoned/failed — otherwise we leave
-// it for the delayed charge.abandoned webhook / reconciliation.
+// Frontend hits this on cancel_action redirect. Paystack has no "expire" API,
+// so we only act once it reports abandoned/failed — otherwise leave it for the
+// delayed webhook/reconciliation.
 export const cancelPaystackCheckout = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({
@@ -410,8 +407,8 @@ export const cancelPaystackCheckout = async (req: Request, res: Response) => {
       .json({ message: 'Checkout canceled', status: paystackStatus });
   }
 
-  // still 'pending' on Paystack's side (e.g. bank transfer / USSD in flight) —
-  // can't safely cancel; leave it for charge.abandoned / reconciliation
+  // still pending on Paystack's side (bank transfer/USSD in flight) — can't
+  // safely cancel, leave it for reconciliation
   return res
     .status(200)
     .json({ message: 'Payment still pending', status: 'pending' });

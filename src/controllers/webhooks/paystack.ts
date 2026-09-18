@@ -20,10 +20,8 @@ export const paystackWebhook = async (req: Request, res: Response) => {
   if (event.event === 'charge.failed') {
     const orderId = data.metadata.orderId;
 
-    // match on reference/currency/amount too, like charge.success below —
-    // otherwise a stray event sharing this order's metadata can flip the
-    // order before the real charge.success for THIS attempt arrives, and
-    // that success update then silently no-ops since status isn't 'pending'
+    // match reference/currency/amount too — otherwise a stray event sharing
+    // this order's metadata could flip it before the real charge.success arrives
     const { data: order, error } = await supabaseAdmin
       .from('order')
       .update({ status: 'failed' })

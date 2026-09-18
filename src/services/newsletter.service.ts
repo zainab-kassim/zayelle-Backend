@@ -6,16 +6,13 @@ export type SubscribeResult =
   | { status: 'already_subscribed' }
   | { status: 'error' };
 
-// Postgres unique_violation — the email is already in the table, which
-// isn't a failure case here, just a no-op re-subscribe.
+// Postgres unique_violation — already subscribed, not an error
 const UNIQUE_VIOLATION = '23505';
 
 export async function subscribeToNewsletter(
   email: string,
 ): Promise<SubscribeResult> {
-  // Explicit check first — the live table has no unique constraint on
-  // email, so a bare insert would happily create duplicates instead of
-  // erroring with 23505.
+  // check first — no unique constraint on email in the live table
   const { data: existing, error: lookupError } = await supabaseAdmin
     .from('newsletters')
     .select('id')
@@ -36,8 +33,7 @@ export async function subscribeToNewsletter(
     .insert({ email });
 
   if (insertError) {
-    // Still handled in case a unique constraint gets added later and two
-    // requests race between the check above and this insert.
+    // also handles a race with the check above, or a constraint added later
     if (insertError.code === UNIQUE_VIOLATION) {
       return { status: 'already_subscribed' };
     }

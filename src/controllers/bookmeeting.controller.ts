@@ -2,9 +2,7 @@ import { Request, Response } from 'express';
 import logger from '../middleware/logger';
 
 export const BookMeeting = async (req: Request, res: Response) => {
-  // Renamed from the request body's `Date` field — destructuring it as
-  // `Date` would shadow the global Date constructor for the rest of this
-  // function's scope.
+  // avoid shadowing the global Date constructor
   const { Username, Date: bookingDate, Time, UserEmail } = req.body;
 
   const makeRes = await fetch(process.env.MAKE_WEBHOOK_URL!, {

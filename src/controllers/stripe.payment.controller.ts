@@ -271,9 +271,8 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
     });
   }
 
-  // order already left 'pending', but a stray webhook event (e.g. a failed/canceled
-  // PaymentIntent racing the successful one) can have flipped it before the real
-  // success landed — re-confirm with Stripe rather than trusting a cached bad status
+  // a stray webhook (e.g. a failed/canceled PaymentIntent racing the
+  // successful one) could've flipped this before success landed — re-verify
   if (order.status !== 'success') {
     const session = await stripe.checkout.sessions.retrieve(session_id);
 
@@ -310,10 +309,9 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
     .json({ message: 'payment already processed', status: order.status });
 };
 
-// Called by the frontend when the user backs out of Stripe Checkout (lands on
-// cancel_url). Restores inventory immediately instead of waiting ~35m for the
-// checkout.session.expired webhook. That webhook still fires as the backstop for
-// exits this path misses (tab closed, connection dropped).
+// Frontend hits this on cancel_url — restores inventory now instead of
+// waiting ~35m for checkout.session.expired, which still fires as a backstop
+// for exits this misses (tab closed, connection dropped).
 export const cancelCheckout = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({

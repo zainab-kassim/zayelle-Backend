@@ -47,9 +47,8 @@ export const UserSignup = async (req: Request, res: Response) => {
     .single();
 
   if (newUserError) {
-    // 23505 = Postgres unique-violation. A concurrent signup for the same
-    // email won the race between the existence check above and this insert —
-    // the DB constraint is the real source of truth, not that earlier check.
+    // 23505 = unique-violation — a concurrent signup won the race with the
+    // check above; the DB constraint is the real source of truth here
     if (newUserError.code === '23505') {
       return res.status(409).json({
         message: 'Account already exists. Please log in instead.',
@@ -84,9 +83,8 @@ export const UserLogin = async (req: Request, res: Response) => {
     });
   }
 
-  // Google-only accounts have no password to compare against. Return the same
-  // generic response as a wrong password so we don't reveal that this email
-  // exists or that it was registered through Google.
+  // Google-only accounts have no password — same generic response as wrong
+  // password so we don't reveal the account exists or how it was created
   if (!user.password) {
     return res.status(401).json({
       message: 'Invalid email or password',
@@ -187,9 +185,8 @@ export const GoogleAuth = async (req: Request, res: Response) => {
       .single();
 
     if (newUserError?.code === '23505') {
-      // 23505 = Postgres unique-violation. A concurrent Google sign-in for
-      // the same new email won the race — the row now exists, so fetch it
-      // and log in with it instead of failing the request.
+      // 23505 = unique-violation — a concurrent Google sign-in won the race;
+      // fetch that row and log in with it instead of failing
       const { data: raceWinner } = await supabaseAdmin
         .from('users')
         .select()
@@ -322,10 +319,7 @@ export const refreshToken = async (req: Request, res: Response) => {
         return res.status(500).json({ message: 'Something went wrong' });
       }
 
-      // Set the new refresh token in the cookies
       SetRefreshTokenCookieOptions(res, newrefreshToken);
-
-      // Set the new access token in the cookies
       SetAccessTokenCookieOptions(res, accessToken);
 
       return res

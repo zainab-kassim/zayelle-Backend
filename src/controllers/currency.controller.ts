@@ -1,4 +1,3 @@
-// controllers/currency.controller.ts
 import { Request, Response } from 'express';
 
 export const GetCurrency = (req: Request, res: Response) => {
