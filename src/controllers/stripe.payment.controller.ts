@@ -173,7 +173,12 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
     .single();
 
   if (orderError || !order) {
-    logger.error({ orderError }, 'Order not found');
+    // logging session_id + user_id here — a lookup that fails on a row we
+    // can otherwise confirm exists is otherwise unexplainable after the fact
+    logger.error(
+      { orderError, session_id, user_id: req.user.id },
+      'Order not found',
+    );
     return res.status(404).json({ message: 'Order not found' });
   }
 

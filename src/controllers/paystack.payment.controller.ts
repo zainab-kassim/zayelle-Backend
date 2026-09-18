@@ -174,7 +174,10 @@ export const verifyPayment = async (req: Request, res: Response) => {
     .single();
 
   if (orderError || !order) {
-    logger.error({ orderError }, 'Order not found');
+    logger.error(
+      { orderError, reference, user_id: req.user.id },
+      'Order not found',
+    );
     return res.status(404).json({ message: 'Order not found' });
   }
 
