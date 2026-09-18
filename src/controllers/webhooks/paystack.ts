@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabaseAdmin';
 import { createHmac } from 'crypto';
 import { handlePostPayment } from '../../utils/handlePostPayment';
+import { restoreInventoryOnFailure } from '../../utils/restoreInventory';
 import logger from '../../middleware/logger';
 
 export const paystackWebhook = async (req: Request, res: Response) => {
@@ -37,18 +38,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
     }
 
-    const restoreError = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      {
-        p_order_id: orderId,
-      },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(orderId);
 
     // still record what was ordered even though payment didn't succeed —
     // best-effort, doesn't affect the payment status already recorded above
@@ -81,16 +71,7 @@ export const paystackWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' }); // idempotent, stop retries
     }
 
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      { p_order_id: orderId },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(orderId);
 
     // still record what was ordered even though payment didn't succeed —
     // best-effort, doesn't affect the payment status already recorded above

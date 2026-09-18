@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { supabaseAdmin } from '../../config/supabaseAdmin';
 import stripe from 'stripe';
 import { handlePostPayment } from '../../utils/handlePostPayment';
+import { restoreInventoryOnFailure } from '../../utils/restoreInventory';
 import logger from '../../middleware/logger';
 
 export const stripeWebhook = async (req: Request, res: Response) => {
@@ -30,16 +31,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' });
     }
 
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      { p_order_id: order.id },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(order.id);
 
     // leave the cart intact so the user can start a fresh checkout
     return res
@@ -63,16 +55,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       return res.status(200).json({ message: 'Already processed' });
     }
 
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      { p_order_id: order.id },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(order.id);
 
     // still record what was ordered — best effort, keeps the cart
     try {

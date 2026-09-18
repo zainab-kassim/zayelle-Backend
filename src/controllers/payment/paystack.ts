@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { Request, Response } from 'express';
-import { supabaseAdmin } from '../config/supabaseAdmin';
-import logger from '../middleware/logger';
-import { handlePostPayment } from '../utils/handlePostPayment';
-import { AuthErrorCode } from '../constants/authErrorCodes';
+import { supabaseAdmin } from '../../config/supabaseAdmin';
+import logger from '../../middleware/logger';
+import { handlePostPayment } from '../../utils/handlePostPayment';
+import { restoreInventoryOnFailure } from '../../utils/restoreInventory';
+import { AuthErrorCode } from '../../constants/authErrorCodes';
 
 export const initializePayment = async (req: Request, res: Response) => {
   if (!req.user) {
@@ -61,9 +62,7 @@ export const initializePayment = async (req: Request, res: Response) => {
 
   const { error: rpcError } = await supabaseAdmin.rpc(
     'decrement_inventory_on_checkout',
-    {
-      p_order_id: order_id,
-    },
+    { p_order_id: order_id },
   );
 
   if (rpcError) {
@@ -110,25 +109,15 @@ export const initializePayment = async (req: Request, res: Response) => {
       },
     );
 
-    const { error: updated_order_error, data: _updated_order_data } =
-      await supabaseAdmin
-        .from('order')
-        .update({ reference })
-        .eq('id', order_id)
-        .eq('user_id', req.user.id)
-        .single();
+    const { error: updated_order_error } = await supabaseAdmin
+      .from('order')
+      .update({ reference })
+      .eq('id', order_id)
+      .eq('user_id', req.user.id)
+      .single();
 
     if (updated_order_error) {
-      const { error: restoreError } = await supabaseAdmin.rpc(
-        'increment_inventory_on_restore',
-        { p_order_id: order_id },
-      );
-      if (restoreError) {
-        logger.error(
-          { error: restoreError },
-          'CRITICAL: inventory restore failed',
-        );
-      }
+      await restoreInventoryOnFailure(order_id);
       logger.error({ updated_order_error }, 'unable to make order');
       return res.status(500).json({ message: 'Unable to make order' });
     }
@@ -140,18 +129,7 @@ export const initializePayment = async (req: Request, res: Response) => {
       reference,
     });
   } catch (err) {
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      {
-        p_order_id: order_id,
-      },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(order_id);
     logger.error({ error: err }, 'Payment initialization failed');
     return res.status(500).json({ message: 'Error initializing payment' });
   }
@@ -252,16 +230,7 @@ export const verifyPayment = async (req: Request, res: Response) => {
         });
       }
 
-      const { error: restoreError } = await supabaseAdmin.rpc(
-        'increment_inventory_on_restore',
-        { p_order_id: order.id },
-      );
-      if (restoreError) {
-        logger.error(
-          { error: restoreError },
-          'CRITICAL: inventory restore failed',
-        );
-      }
+      await restoreInventoryOnFailure(order.id);
       logger.error('payment failed');
 
       // still record what was ordered even though payment didn't succeed —
@@ -387,16 +356,7 @@ export const cancelPaystackCheckout = async (req: Request, res: Response) => {
         .json({ message: 'Already processed', status: paystackStatus });
     }
 
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      { p_order_id: order.id },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(order.id);
 
     // record what was ordered — best effort, keep the cart for a retry
     try {

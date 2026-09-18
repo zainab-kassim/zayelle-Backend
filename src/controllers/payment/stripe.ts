@@ -1,9 +1,10 @@
 import Stripe from 'stripe';
 import { Request, Response } from 'express';
-import { supabaseAdmin } from '../config/supabaseAdmin';
-import logger from '../middleware/logger';
-import { handlePostPayment } from '../utils/handlePostPayment';
-import { AuthErrorCode } from '../constants/authErrorCodes';
+import { supabaseAdmin } from '../../config/supabaseAdmin';
+import logger from '../../middleware/logger';
+import { handlePostPayment } from '../../utils/handlePostPayment';
+import { restoreInventoryOnFailure } from '../../utils/restoreInventory';
+import { AuthErrorCode } from '../../constants/authErrorCodes';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
   apiVersion: '2026-02-25.clover',
@@ -119,16 +120,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       .single();
 
     if (updatedOrderError) {
-      const { error: restoreError } = await supabaseAdmin.rpc(
-        'increment_inventory_on_restore',
-        { p_order_id: order_id },
-      );
-      if (restoreError) {
-        logger.error(
-          { error: restoreError },
-          'CRITICAL: inventory restore failed',
-        );
-      }
+      await restoreInventoryOnFailure(order_id);
       logger.error({ updatedOrderError }, 'unable to make order');
       return res.status(500).json({ message: 'Unable to make order' });
     }
@@ -139,18 +131,7 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
       session_id: session.id,
     });
   } catch (err) {
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      {
-        p_order_id: order_id,
-      },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(order_id);
     logger.error({ error: err }, 'Payment initialization failed');
     return res.status(500).json({ message: 'Error initializing payment' });
   }
@@ -241,18 +222,7 @@ export const verifyCheckoutSession = async (req: Request, res: Response) => {
         });
       }
 
-      const { error: restoreError } = await supabaseAdmin.rpc(
-        'increment_inventory_on_restore',
-        {
-          p_order_id: order.id,
-        },
-      );
-      if (restoreError) {
-        logger.error(
-          { error: restoreError },
-          'CRITICAL: inventory restore failed',
-        );
-      }
+      await restoreInventoryOnFailure(order.id);
 
       // still record what was ordered even though payment didn't succeed —
       // best-effort, doesn't affect the payment status already recorded above
@@ -366,16 +336,7 @@ export const cancelCheckout = async (req: Request, res: Response) => {
     .single();
 
   if (canceled && !cancelError) {
-    const { error: restoreError } = await supabaseAdmin.rpc(
-      'increment_inventory_on_restore',
-      { p_order_id: order.id },
-    );
-    if (restoreError) {
-      logger.error(
-        { error: restoreError },
-        'CRITICAL: inventory restore failed',
-      );
-    }
+    await restoreInventoryOnFailure(order.id);
   }
 
   // close the session on Stripe's side too so it can't be paid later; this
