@@ -7,12 +7,11 @@ import cookieParser from 'cookie-parser';
 import cartRoutes from './routes/cart.routes';
 import productRoutes from './routes/product.routes';
 import orderRoutes from './routes/order.routes';
-import paystackPaymentRoutes from './routes/paystack.payment.routes';
-import stripePaymentRoutes from './routes/stripe.payment.routes';
+import paymentRoutes from './routes/payment.routes';
 import { currencyMiddleware } from './middleware/currencyMiddleware';
 import webhookRoute from './routes/webhook.routes';
 import { generalLimiter } from './middleware/consume';
-import { throttle, strictThrottle } from './middleware/throttle';
+import { throttle } from './middleware/throttle';
 import helmet from 'helmet';
 import logger from './middleware/logger';
 import { cleanupJob } from './jobs/cleanup';
@@ -69,11 +68,9 @@ app.use('/api/auth', throttle, userRoutes);
 //middleware to use cart routes
 app.use('/api/cart', throttle, cartRoutes);
 
-//middleware to use payment routes
-app.use('/api/payment/paystack', strictThrottle, paystackPaymentRoutes);
-
-//middleware for stripe payment routes
-app.use('/api/payment/stripe', strictThrottle, stripePaymentRoutes);
+// Stripe and Paystack routes live under one router (see payment.routes.ts),
+// mirroring how webhook.routes.ts already handles both providers
+app.use('/api/payment', paymentRoutes);
 
 app.use(generalLimiter);
 
