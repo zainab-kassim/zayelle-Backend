@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabaseAdmin';
 import { Request, Response } from 'express';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
+import { formatOrderItemPrices } from '../utils/formatOrderItemPrices';
 import logger from '../middleware/logger';
 import { AuthErrorCode } from '../constants/authErrorCodes';
 
@@ -138,15 +139,7 @@ export const getOrderHistory = async (req: Request, res: Response) => {
     ),
   );
 
-  // convert item prices with the rate stored on each order (locked in at checkout),
-  // not today's live rate — otherwise these wouldn't match the order's own totalLocal
-  const formattedOrders = orders.map((order) => ({
-    ...order,
-    order_items: order.order_items.map((item: { price: number }) => ({
-      ...item,
-      price: parseFloat((item.price * order.rate).toFixed(2)),
-    })),
-  }));
+  const formattedOrders = orders.map(formatOrderItemPrices);
 
   return res.status(200).json({
     message: 'Order history fetched successfully',
@@ -237,15 +230,5 @@ export const getOrderDetails = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Order not found' });
   }
 
-  // convert with the rate stored on this order (locked in at checkout), not
-  // today's live rate — otherwise these wouldn't match the order's own totalLocal
-  const formattedOrder = {
-    ...order,
-    order_items: order.order_items.map((item: { price: number }) => ({
-      ...item,
-      price: parseFloat((item.price * order.rate).toFixed(2)),
-    })),
-  };
-
-  return res.status(200).json({ order: formattedOrder });
+  return res.status(200).json({ order: formatOrderItemPrices(order) });
 };
