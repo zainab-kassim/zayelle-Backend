@@ -1,4 +1,5 @@
 import z from 'zod';
+import { SHIPPING_COUNTRIES } from './create.order.schema';
 
 export const updateShippingInfoSchema = z.object({
   order_id: z.number().positive(),
@@ -9,5 +10,5 @@ export const updateShippingInfoSchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   postal_code: z.string().optional(),
-  country: z.string().optional(),
+  country: z.enum(SHIPPING_COUNTRIES).optional(),
 });

@@ -6,6 +6,22 @@ import { formatOrderItemPrices } from '../utils/formatOrderItemPrices';
 import logger from '../middleware/logger';
 import { AuthErrorCode } from '../constants/authErrorCodes';
 
+// flat rate per destination, already in that order's own currency — added
+// straight to totalLocal with no further conversion. Nigeria is quoted in
+// USD instead (no fixed NGN rate agreed yet), so it goes through the same
+// `rate` conversion as the rest of the order.
+const SHIPPING_FEE_LOCAL: Record<string, number> = {
+  'United States': 20,
+  'United Kingdom': 25,
+  Canada: 18,
+};
+const NIGERIA_SHIPPING_FEE_USD = 40;
+
+function getShippingFee(country: string, rate: number): number {
+  if (country === 'Nigeria') return NIGERIA_SHIPPING_FEE_USD * rate;
+  return SHIPPING_FEE_LOCAL[country] ?? 0;
+}
+
 export const createorder = async (req: Request, res: Response) => {
   if (!req.user) {
     return res.status(401).json({
@@ -45,6 +61,7 @@ export const createorder = async (req: Request, res: Response) => {
     (sum, item) => sum + item.price,
     0,
   );
+  const shippingFee = getShippingFee(country, rate);
 
   const { data: neworder, error: newordererror } = await supabaseAdmin
     .from('order')
@@ -61,7 +78,7 @@ export const createorder = async (req: Request, res: Response) => {
       state,
       postal_code,
       country,
-      totalLocal: parseFloat((total_price * rate).toFixed(2)),
+      totalLocal: parseFloat((total_price * rate + shippingFee).toFixed(2)),
       rate,
       currency: req.currency,
     })
@@ -178,6 +195,30 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     country,
   } = req.body;
 
+  // the shipping fee baked into totalLocal at creation was priced for the
+  // country entered then — if the destination changes here, that fee is
+  // now wrong, so recompute it against the order's own locked-in rate
+  let totalLocal: number | undefined;
+  if (country) {
+    const { data: existingOrder, error: existingOrderError } =
+      await supabaseAdmin
+        .from('order')
+        .select('total_price, rate')
+        .eq('id', order_id)
+        .eq('user_id', req.user.id)
+        .single();
+
+    if (existingOrderError || !existingOrder) {
+      logger.error({ existingOrderError }, 'Order not found');
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const shippingFee = getShippingFee(country, existingOrder.rate);
+    totalLocal = parseFloat(
+      (existingOrder.total_price * existingOrder.rate + shippingFee).toFixed(2),
+    );
+  }
+
   const { data: updatedorder, error: updatedordererror } = await supabaseAdmin
     .from('order')
     .update({
@@ -189,11 +230,12 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
       state,
       postal_code,
       country,
+      ...(totalLocal !== undefined && { totalLocal }),
     })
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .select(
-      'street_address,apt_no,customerName,customerPhonenumber,city,state,postal_code,country',
+      'street_address,apt_no,customerName,customerPhonenumber,city,state,postal_code,country,totalLocal',
     )
     .single();
 
