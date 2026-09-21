@@ -6,20 +6,37 @@ import { formatOrderItemPrices } from '../utils/formatOrderItemPrices';
 import logger from '../middleware/logger';
 import { AuthErrorCode } from '../constants/authErrorCodes';
 
-// flat rate per destination, already in that order's own currency — added
-// straight to totalLocal with no further conversion. Nigeria is quoted in
-// USD instead (no fixed NGN rate agreed yet), so it goes through the same
-// `rate` conversion as the rest of the order.
-const SHIPPING_FEE_LOCAL: Record<string, number> = {
-  'United States': 20,
-  'United Kingdom': 25,
-  Canada: 18,
+// one config per shipping destination — currency and fee used to live in
+// two separate maps that had to be kept in sync by hand; merged since they
+// only ever change together. `feeInUsd` is only true for Nigeria, which has
+// no fixed NGN shipping rate agreed yet, so that fee converts via `rate`
+// same as the rest of the order instead of being a flat local amount.
+//
+// country is the source of truth here, not req.currency (the browsing/
+// geolocated currency header) — deriving both currency and fee from it
+// means an order can never end up with a currency that doesn't match its
+// own shipping destination, regardless of frontend timing.
+const SHIPPING_DESTINATIONS: Record<
+  string,
+  { currency: string; fee: number; feeInUsd?: boolean }
+> = {
+  'United States': { currency: 'USD', fee: 20 },
+  'United Kingdom': { currency: 'GBP', fee: 25 },
+  Canada: { currency: 'CAD', fee: 18 },
+  Nigeria: { currency: 'NGN', fee: 40, feeInUsd: true },
 };
-const NIGERIA_SHIPPING_FEE_USD = 40;
 
+// country is validated against this exact set by the request schemas before
+// either controller below runs, so a lookup miss here would mean the schema
+// and this table have drifted apart, not a bad request
 function getShippingFee(country: string, rate: number): number {
-  if (country === 'Nigeria') return NIGERIA_SHIPPING_FEE_USD * rate;
-  return SHIPPING_FEE_LOCAL[country] ?? 0;
+  const destination = SHIPPING_DESTINATIONS[country];
+  if (!destination) return 0;
+  return destination.feeInUsd ? destination.fee * rate : destination.fee;
+}
+
+function getCurrencyForCountry(country: string): string {
+  return SHIPPING_DESTINATIONS[country]?.currency ?? 'USD';
 }
 
 export const createorder = async (req: Request, res: Response) => {
@@ -30,9 +47,6 @@ export const createorder = async (req: Request, res: Response) => {
     });
   }
   const user_id = req.user.id;
-  const currency = req.currency;
-  const rates = await getCachedRates();
-  const rate = getRate(rates, currency);
 
   const {
     cart_id,
@@ -45,6 +59,10 @@ export const createorder = async (req: Request, res: Response) => {
     postal_code,
     country,
   } = req.body;
+
+  const currency = getCurrencyForCountry(country);
+  const rates = await getCachedRates();
+  const rate = getRate(rates, currency);
 
   const { data: existingcart, error: existingcarterror } = await supabaseAdmin
     .from('carts')
@@ -62,39 +80,52 @@ export const createorder = async (req: Request, res: Response) => {
     0,
   );
   const shippingFee = getShippingFee(country, rate);
+  const orderFields = {
+    total_price,
+    customerName,
+    customerPhonenumber,
+    street_address,
+    apt_no,
+    city,
+    state,
+    postal_code,
+    country,
+    totalLocal: parseFloat((total_price * rate + shippingFee).toFixed(2)),
+    rate,
+    currency,
+  };
+  const returning = `id,user_id(id,email),cart_id,total_price,status,customerName,customerPhonenumber,street_address,apt_no,city,state,postal_code,country,totalLocal`;
 
-  const { data: neworder, error: newordererror } = await supabaseAdmin
+  // idempotent per cart — a retried request or a stale frontend that thinks
+  // it has no order yet would otherwise leave a second pending order behind
+  // for the same cart, indistinguishable from a real duplicate purchase
+  const { data: existingOrder } = await supabaseAdmin
     .from('order')
-    .insert({
-      user_id,
-      cart_id,
-      total_price,
-      status: 'pending',
-      customerName,
-      customerPhonenumber,
-      street_address,
-      apt_no,
-      city,
-      state,
-      postal_code,
-      country,
-      totalLocal: parseFloat((total_price * rate + shippingFee).toFixed(2)),
-      rate,
-      currency: req.currency,
-    })
-    .select(
-      `id,user_id(id,email),cart_id,total_price,status,customerName,customerPhonenumber,street_address,apt_no,city,state,postal_code,country,totalLocal`,
-    )
-    .single();
+    .select('id')
+    .eq('cart_id', cart_id)
+    .eq('user_id', user_id)
+    .eq('status', 'pending')
+    .maybeSingle();
 
-  if (newordererror || !neworder) {
-    logger.error({ newordererror }, 'error creating order');
+  const { data: order, error: orderError } = existingOrder
+    ? await supabaseAdmin
+        .from('order')
+        .update(orderFields)
+        .eq('id', existingOrder.id)
+        .select(returning)
+        .single()
+    : await supabaseAdmin
+        .from('order')
+        .insert({ user_id, cart_id, status: 'pending', ...orderFields })
+        .select(returning)
+        .single();
+
+  if (orderError || !order) {
+    logger.error({ orderError }, 'error creating order');
     return res.status(500).json({ message: 'Error creating order' });
   }
 
-  return res
-    .status(200)
-    .json({ message: 'Order created successfully', order: neworder });
+  return res.status(200).json({ message: 'Order created successfully', order });
 };
 
 // the UI only distinguishes 3 buckets — group the raw order.status values to match
@@ -195,15 +226,19 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
     country,
   } = req.body;
 
-  // the shipping fee baked into totalLocal at creation was priced for the
-  // country entered then — if the destination changes here, that fee is
-  // now wrong, so recompute it against the order's own locked-in rate
+  // the fee (and currency) baked into totalLocal at creation were priced for
+  // the country entered then — if the destination changes here, both are now
+  // wrong. Derived from country directly (not req.currency) so this can't
+  // drift out of sync with whatever the frontend's currency store happens
+  // to hold at request time.
   let totalLocal: number | undefined;
+  let rate: number | undefined;
+  let currency: string | undefined;
   if (country) {
     const { data: existingOrder, error: existingOrderError } =
       await supabaseAdmin
         .from('order')
-        .select('total_price, rate')
+        .select('total_price')
         .eq('id', order_id)
         .eq('user_id', req.user.id)
         .single();
@@ -213,9 +248,12 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    const shippingFee = getShippingFee(country, existingOrder.rate);
+    currency = getCurrencyForCountry(country);
+    const rates = await getCachedRates();
+    rate = getRate(rates, currency);
+    const shippingFee = getShippingFee(country, rate);
     totalLocal = parseFloat(
-      (existingOrder.total_price * existingOrder.rate + shippingFee).toFixed(2),
+      (existingOrder.total_price * rate + shippingFee).toFixed(2),
     );
   }
 
@@ -230,12 +268,12 @@ export const updateshippinginfo = async (req: Request, res: Response) => {
       state,
       postal_code,
       country,
-      ...(totalLocal !== undefined && { totalLocal }),
+      ...(totalLocal !== undefined && { totalLocal, rate, currency }),
     })
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .select(
-      'street_address,apt_no,customerName,customerPhonenumber,city,state,postal_code,country,totalLocal',
+      'street_address,apt_no,customerName,customerPhonenumber,city,state,postal_code,country,totalLocal,currency',
     )
     .single();
 
