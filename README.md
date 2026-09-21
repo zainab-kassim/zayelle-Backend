@@ -4,18 +4,18 @@ REST API powering [Zayelle](https://byzayelle.com), a fashion e-commerce platfor
 
 ## Tech stack
 
-| Layer | Choice |
-|---|---|
-| Runtime | Node.js, Express 5, TypeScript |
-| Database | Supabase (Postgres), via `@supabase/supabase-js` |
-| Auth | JWT access/refresh tokens (per-device sessions), Passport (Google OAuth), bcrypt |
-| Payments | Stripe, Paystack |
-| Email | Resend |
-| Validation | Zod, express-validator |
-| Rate limiting | rate-limiter-flexible, express-slow-down |
-| Scheduling | node-cron |
-| Testing | Jest, Supertest, ts-jest |
-| Tooling | ESLint, Prettier, Husky + lint-staged |
+| Layer         | Choice                                                                           |
+| ------------- | -------------------------------------------------------------------------------- |
+| Runtime       | Node.js, Express 5, TypeScript                                                   |
+| Database      | Supabase (Postgres), via `@supabase/supabase-js`                                 |
+| Auth          | JWT access/refresh tokens (per-device sessions), Passport (Google OAuth), bcrypt |
+| Payments      | Stripe, Paystack                                                                 |
+| Email         | Resend                                                                           |
+| Validation    | Zod, express-validator                                                           |
+| Rate limiting | rate-limiter-flexible, express-slow-down                                         |
+| Scheduling    | node-cron                                                                        |
+| Testing       | Jest, Supertest, ts-jest                                                         |
+| Tooling       | ESLint, Prettier, Husky + lint-staged                                            |
 
 ## Features
 
@@ -129,67 +129,67 @@ All routes are mounted under `/api`. Routes marked **Auth** require a valid sess
 
 ### Auth — `/api/auth`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/signup` | | Create an account |
-| POST | `/login` | | Email/password login |
-| POST | `/google` | | Google OAuth login |
-| POST | `/logout` | | Revoke the current session |
-| POST | `/forgot-password` | | Request a password reset email |
-| POST | `/reset-password` | | Reset password with a valid token |
-| POST | `/token` | | Rotate an access token from a refresh token |
+| Method | Path               | Auth | Description                                 |
+| ------ | ------------------ | ---- | ------------------------------------------- |
+| POST   | `/signup`          |      | Create an account                           |
+| POST   | `/login`           |      | Email/password login                        |
+| POST   | `/google`          |      | Google OAuth login                          |
+| POST   | `/logout`          |      | Revoke the current session                  |
+| POST   | `/forgot-password` |      | Request a password reset email              |
+| POST   | `/reset-password`  |      | Reset password with a valid token           |
+| POST   | `/token`           |      | Rotate an access token from a refresh token |
 
 ### Cart — `/api/cart`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/` | ✓ | Get the current user's cart |
-| POST | `/addtocart` | | Add an item to the cart |
-| PUT | `/updatequantity` | | Update an item's quantity |
-| DELETE | `/deletecartitem/:id` | | Remove an item from the cart |
+| Method | Path                  | Auth | Description                  |
+| ------ | --------------------- | ---- | ---------------------------- |
+| GET    | `/`                   | ✓    | Get the current user's cart  |
+| POST   | `/addtocart`          |      | Add an item to the cart      |
+| PUT    | `/updatequantity`     |      | Update an item's quantity    |
+| DELETE | `/deletecartitem/:id` |      | Remove an item from the cart |
 
 ### Products — `/api/products`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/` | | List products |
-| GET | `/:slug` | | Get a product by slug |
-| GET | `/collection/:collectionSlug` | | List products in a collection |
+| Method | Path                          | Auth | Description                   |
+| ------ | ----------------------------- | ---- | ----------------------------- |
+| GET    | `/`                           |      | List products                 |
+| GET    | `/:slug`                      |      | Get a product by slug         |
+| GET    | `/collection/:collectionSlug` |      | List products in a collection |
 
 ### Orders — `/api/order`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/` | | Create an order |
-| GET | `/orderhistory` | ✓ | List the current user's orders |
-| GET | `/:order_id` | ✓ | Get order details |
-| POST | `/edit-shipping-info` | | Update shipping info (recomputes currency/rate/total server-side) |
+| Method | Path                  | Auth | Description                                                       |
+| ------ | --------------------- | ---- | ----------------------------------------------------------------- |
+| POST   | `/`                   |      | Create an order                                                   |
+| GET    | `/orderhistory`       | ✓    | List the current user's orders                                    |
+| GET    | `/:order_id`          | ✓    | Get order details                                                 |
+| POST   | `/edit-shipping-info` |      | Update shipping info (recomputes currency/rate/total server-side) |
 
 ### Payments — `/api/payment`
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| POST | `/stripe/create-checkout-session` | ✓ | Start a Stripe checkout session |
-| POST | `/stripe/cancel-checkout` | ✓ | Cancel a pending Stripe session |
-| GET | `/stripe/verify-payment/:session_id` | ✓ | Verify a Stripe session |
-| POST | `/paystack/initialize` | ✓ | Start a Paystack transaction |
-| POST | `/paystack/cancel-checkout` | ✓ | Cancel a pending Paystack transaction |
-| GET | `/paystack/verify/:reference` | ✓ | Verify a Paystack transaction |
+| Method | Path                                 | Auth | Description                           |
+| ------ | ------------------------------------ | ---- | ------------------------------------- |
+| POST   | `/stripe/create-checkout-session`    | ✓    | Start a Stripe checkout session       |
+| POST   | `/stripe/cancel-checkout`            | ✓    | Cancel a pending Stripe session       |
+| GET    | `/stripe/verify-payment/:session_id` | ✓    | Verify a Stripe session               |
+| POST   | `/paystack/initialize`               | ✓    | Start a Paystack transaction          |
+| POST   | `/paystack/cancel-checkout`          | ✓    | Cancel a pending Paystack transaction |
+| GET    | `/paystack/verify/:reference`        | ✓    | Verify a Paystack transaction         |
 
 ### Webhooks — `/api/webhooks`
 
-| Method | Path | Description |
-|---|---|---|
-| POST | `/stripe` | Stripe payment event webhook |
-| POST | `/paystack` | Paystack payment event webhook |
+| Method | Path        | Description                    |
+| ------ | ----------- | ------------------------------ |
+| POST   | `/stripe`   | Stripe payment event webhook   |
+| POST   | `/paystack` | Paystack payment event webhook |
 
 ### Other
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| GET | `/api/currency` | | Get current exchange rates |
-| POST | `/api/booking` | | Book a custom-order consultation |
-| POST | `/api/newsletter/subscribe` | | Subscribe to the newsletter |
+| Method | Path                        | Auth | Description                      |
+| ------ | --------------------------- | ---- | -------------------------------- |
+| GET    | `/api/currency`             |      | Get current exchange rates       |
+| POST   | `/api/booking`              |      | Book a custom-order consultation |
+| POST   | `/api/newsletter/subscribe` |      | Subscribe to the newsletter      |
 
 ## Key architectural decisions
 
