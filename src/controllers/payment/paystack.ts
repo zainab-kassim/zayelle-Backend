@@ -78,7 +78,9 @@ export const initializePayment = async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Failed to process inventory' });
   }
 
-  const converted_price = order.totalLocal * 100;
+  // Paystack requires an exact integer minor-unit amount — floating point
+  // multiplication (e.g. 547.2 * 100) can land on 54720.00000000001
+  const converted_price = Math.round(order.totalLocal * 100);
   const reference = `ZAYELLE_${order_id}_`;
   const isProduction = process.env.NODE_ENV === 'Production';
   const frontendUrl = isProduction

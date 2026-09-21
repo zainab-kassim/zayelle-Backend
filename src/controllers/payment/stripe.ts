@@ -30,7 +30,9 @@ export const createCheckoutSession = async (req: Request, res: Response) => {
     return res.status(404).json({ message: 'Order not found' });
   }
 
-  const converted_price = order.totalLocal * 100;
+  // Stripe requires an exact integer minor-unit amount — floating point
+  // multiplication (e.g. 547.2 * 100) can land on 54720.00000000001
+  const converted_price = Math.round(order.totalLocal * 100);
 
   if (order.checkoutSession_id) {
     const session = await stripe.checkout.sessions.retrieve(
