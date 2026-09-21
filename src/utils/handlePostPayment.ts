@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import logger from '../middleware/logger';
+import { sendOrderConfirmationEmail } from './sendOrderConfirmationEmail';
 
 export const handlePostPayment = async (
   order_id: number,
@@ -10,7 +11,7 @@ export const handlePostPayment = async (
 ) => {
   const { data: cartItems, error: cartItemsError } = await supabaseAdmin
     .from('cart_items')
-    .select('*')
+    .select('*, product:product_id(name)')
     .eq('cart_id', cart_id);
 
   if (cartItemsError) {
@@ -41,6 +42,56 @@ export const handlePostPayment = async (
   }
 
   if (!clearCart) return;
+
+  // this only runs on the genuine-success path (clearCart defaults to true
+  // there, and every failure/expiry call site passes false), and the caller
+  // only reaches handlePostPayment once per order — whichever reconciliation
+  // path (webhook or redirect-verify) wins the pending→success flip — so
+  // this fires exactly once per order, no separate idempotency check needed
+  const { data: order } = await supabaseAdmin
+    .from('order')
+    .select(
+      'id, customerName, totalLocal, currency, rate, street_address, apt_no, city, state, country, postal_code, user_id(email)',
+    )
+    .eq('id', order_id)
+    .single();
+
+  // supabase-js infers this FK join as an array without generated DB types,
+  // even though `order.user_id` is always exactly one user
+  const customer = Array.isArray(order?.user_id)
+    ? order.user_id[0]
+    : order?.user_id;
+
+  if (order && customer?.email) {
+    // cart_items.price is stored in base currency and converted on read
+    // everywhere else (see cart.controller.ts's getcart) — same conversion
+    // needed here, or these show up in the wrong amount next to a
+    // correctly-converted total
+    const emailItems = cartItems.map((item) => ({
+      name: item.product?.name ?? 'Item',
+      size: item.size,
+      quantity: item.quantity,
+      price: parseFloat((item.price * order.rate).toFixed(2)),
+    }));
+    const subtotal = emailItems.reduce((sum, item) => sum + item.price, 0);
+
+    await sendOrderConfirmationEmail(customer.email, {
+      orderId: order.id,
+      customerName: order.customerName,
+      orderCode: `ZKT-87${order.id}`,
+      items: emailItems,
+      subtotal,
+      shipping: Math.max(0, order.totalLocal - subtotal),
+      total: order.totalLocal,
+      currency: order.currency,
+      addressLines: [
+        [order.street_address, order.apt_no].filter(Boolean).join(', '),
+        [order.city, order.state].filter(Boolean).join(', '),
+        order.country,
+        order.postal_code,
+      ].filter(Boolean),
+    });
+  }
 
   const { error: deletedCartItemsError } = await supabaseAdmin
     .from('cart_items')
