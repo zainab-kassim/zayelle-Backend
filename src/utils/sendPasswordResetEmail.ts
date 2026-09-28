@@ -1,6 +1,15 @@
 import { resend, EMAIL_FROM } from '../config/resend';
 import logger from '../middleware/logger';
-import { SERIF, SANS, INK, PAPER, MUTED, SURFACE, LINE } from './emailTheme';
+import {
+  SERIF,
+  SANS,
+  INK,
+  PAPER,
+  MUTED,
+  SURFACE,
+  LINE,
+  REPLY_TO,
+} from './emailTheme';
 
 function buildHtml(resetUrl: string): string {
   return `
@@ -70,6 +79,7 @@ export const sendPasswordResetEmail = async (
     const { error } = await resend.emails.send({
       from: EMAIL_FROM,
       to,
+      replyTo: REPLY_TO,
       subject: 'Reset your Zayelle password',
       text: buildText(resetUrl),
       html: buildHtml(resetUrl),

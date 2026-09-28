@@ -1,6 +1,15 @@
 import { resend, EMAIL_FROM } from '../config/resend';
 import logger from '../middleware/logger';
-import { SERIF, SANS, INK, PAPER, MUTED, SURFACE, LINE } from './emailTheme';
+import {
+  SERIF,
+  SANS,
+  INK,
+  PAPER,
+  MUTED,
+  SURFACE,
+  LINE,
+  REPLY_TO,
+} from './emailTheme';
 
 interface OrderConfirmationItem {
   name: string;
@@ -128,7 +137,11 @@ function buildHtml(order: OrderConfirmationDetails): string {
 
     <tr>
       <td style="padding:20px 40px; border-top:1px solid ${LINE}; text-align:center;">
-        <p style="margin:0; font-family:${SANS}; font-size:11px; color:${MUTED};">Questions about your order? Just reply to this email.</p>
+        <p style="margin:0; font-family:${SANS}; font-size:11px; color:${MUTED}; line-height:1.6;">
+          Questions about your order? Reply to this email or write to
+          <a href="mailto:${REPLY_TO}" style="color:${INK};">${REPLY_TO}</a>.
+        </p>
+        <p style="margin:8px 0 0; font-family:${SANS}; font-size:10px; color:${MUTED};">This is an automated message.</p>
       </td>
     </tr>
   </table>
@@ -151,7 +164,9 @@ function buildText(order: OrderConfirmationDetails): string {
     `Shipping: ${order.shipping > 0 ? formatAmount(order.shipping, order.currency) : 'Free'}\n` +
     `Total: ${formatAmount(order.total, order.currency)}\n\n` +
     `Shipping to:\n${order.customerName}\n${order.addressLines.join('\n')}\n\n` +
-    `View your order: ${getOrderUrl(order.orderId)}`
+    `View your order: ${getOrderUrl(order.orderId)}\n\n` +
+    `Questions about your order? Reply to this email or write to ${REPLY_TO}.\n` +
+    `This is an automated message.`
   );
 }
 
@@ -164,6 +179,7 @@ export const sendOrderConfirmationEmail = async (
     const { error } = await resend.emails.send({
       from: EMAIL_FROM,
       to,
+      replyTo: REPLY_TO,
       subject: `Your Zayelle order ${order.orderCode} is confirmed`,
       text: buildText(order),
       html: buildHtml(order),

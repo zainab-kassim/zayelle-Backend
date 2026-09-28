@@ -1,6 +1,15 @@
 import { resend, EMAIL_FROM } from '../config/resend';
 import logger from '../middleware/logger';
-import { SERIF, SANS, INK, PAPER, MUTED, SURFACE, LINE } from './emailTheme';
+import {
+  SERIF,
+  SANS,
+  INK,
+  PAPER,
+  MUTED,
+  SURFACE,
+  LINE,
+  REPLY_TO,
+} from './emailTheme';
 
 function getSiteUrl(): string {
   const isProduction = process.env.NODE_ENV === 'Production';
@@ -38,7 +47,11 @@ function buildHtml(): string {
 
     <tr>
       <td style="padding:20px 40px; border-top:1px solid ${LINE}; text-align:center;">
-        <p style="margin:0; font-family:${SANS}; font-size:11px; color:${MUTED};">Questions? Just reply to this email.</p>
+        <p style="margin:0; font-family:${SANS}; font-size:11px; color:${MUTED}; line-height:1.6;">
+          Questions? Reply to this email or write to
+          <a href="mailto:${REPLY_TO}" style="color:${INK};">${REPLY_TO}</a>.
+        </p>
+        <p style="margin:8px 0 0; font-family:${SANS}; font-size:10px; color:${MUTED};">This is an automated message.</p>
       </td>
     </tr>
   </table>
@@ -50,7 +63,9 @@ function buildText(): string {
   return (
     `You're on the list. Welcome to the circle.\n\n` +
     `Early access to new collections, custom-order slots and styling notes, straight to your inbox.\n\n` +
-    `Shop new arrivals: ${siteUrl}`
+    `Shop new arrivals: ${siteUrl}\n\n` +
+    `Questions? Reply to this email or write to ${REPLY_TO}.\n` +
+    `This is an automated message.`
   );
 }
 
@@ -60,6 +75,7 @@ export const sendNewsletterWelcomeEmail = async (to: string): Promise<void> => {
     const { error } = await resend.emails.send({
       from: EMAIL_FROM,
       to,
+      replyTo: REPLY_TO,
       subject: 'Welcome to the Zayelle Circle',
       text: buildText(),
       html: buildHtml(),
