@@ -1,5 +1,6 @@
 import { resend, EMAIL_FROM } from '../config/resend';
 import logger from '../middleware/logger';
+import { SERIF, SANS, INK, PAPER, MUTED, SURFACE, LINE } from './emailTheme';
 
 interface OrderConfirmationItem {
   name: string;
@@ -19,18 +20,6 @@ interface OrderConfirmationDetails {
   currency: string;
   addressLines: string[];
 }
-
-// email-safe font stacks — web fonts (Fraunces/Inter) aren't reliably
-// supported by mail clients, these are the closest web-safe equivalents
-const SERIF = `Georgia, 'Times New Roman', serif`;
-const SANS = `Helvetica, Arial, sans-serif`;
-
-// site's own palette, matching app/globals.css / tailwind.config.ts tokens
-const INK = '#17171A';
-const PAPER = '#FCFBF9';
-const MUTED = '#726B60';
-const SURFACE = '#F6F4F1';
-const LINE = '#E7E3DC';
 
 function formatAmount(amount: number, currency: string): string {
   return new Intl.NumberFormat('en-US', {
