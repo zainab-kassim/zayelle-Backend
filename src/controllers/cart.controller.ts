@@ -5,6 +5,15 @@ import { getRate } from '../utils/getRate';
 import logger from '../middleware/logger';
 import { AuthErrorCode } from '../constants/authErrorCodes';
 
+// some products (e.g. Floreal) price differently per size — size_prices
+// overrides the base price for a matching size, otherwise falls back to it
+function resolvePrice(
+  product: { price: number; size_prices?: Record<string, number> | null },
+  size: string,
+): number {
+  return product.size_prices?.[size] ?? product.price;
+}
+
 export const addtocart = async (req: Request, res: Response) => {
   if (!req.user || !req.user.id) {
     return res.status(401).json({
@@ -21,7 +30,7 @@ export const addtocart = async (req: Request, res: Response) => {
 
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
-    .select('price')
+    .select('price, size_prices')
     .eq('id', productid)
     .single();
 
@@ -29,6 +38,8 @@ export const addtocart = async (req: Request, res: Response) => {
     logger.error({ productError }, 'invalid product');
     return res.status(404).json({ message: 'invalid product' });
   }
+  const unitprice = resolvePrice(product, size);
+
   const { data: existingcart } = await supabaseAdmin
     .from('carts')
     .select()
@@ -58,7 +69,7 @@ export const addtocart = async (req: Request, res: Response) => {
 
     if (existingcartitems) {
       const updatedQuantity = existingcartitems.quantity + 1;
-      const updatedPrice = product.price * updatedQuantity;
+      const updatedPrice = unitprice * updatedQuantity;
 
       const { data: updatedCartItem, error: updateCartItemError } =
         await supabaseAdmin
@@ -92,9 +103,9 @@ export const addtocart = async (req: Request, res: Response) => {
         cart_id: existingcart.id,
         product_id: productid,
         quantity,
-        price: product.price * quantity,
+        price: unitprice * quantity,
         size,
-        unitprice: product.price,
+        unitprice,
       })
       .select(`id,product_id(name,slug,image), quantity, price, size`)
       .single();
@@ -133,9 +144,9 @@ export const addtocart = async (req: Request, res: Response) => {
       cart_id: newcart.id,
       product_id: productid,
       quantity,
-      price: product.price * quantity,
+      price: unitprice * quantity,
       size,
-      unitprice: product.price,
+      unitprice,
     })
     .select(`id,product_id(name,slug,image), quantity, price, size`)
     .single();

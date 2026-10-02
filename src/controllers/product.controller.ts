@@ -4,6 +4,20 @@ import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
 import logger from '../middleware/logger';
 
+// converts a product's per-size price overrides (if any) into the request's currency
+function convertSizePrices(
+  sizePrices: Record<string, number> | null | undefined,
+  rate: number,
+): Record<string, number> | null {
+  if (!sizePrices) return null;
+  return Object.fromEntries(
+    Object.entries(sizePrices).map(([size, price]) => [
+      size,
+      parseFloat((price * rate).toFixed(2)),
+    ]),
+  );
+}
+
 export const GetProducts = async (req: Request, res: Response) => {
   const currency = req.currency;
   const rates = await getCachedRates();
@@ -12,7 +26,7 @@ export const GetProducts = async (req: Request, res: Response) => {
   const { data: products, error: productError } = await supabaseAdmin
     .from('products')
     .select(
-      'name, slug, description, price, size, quantity, image, collections(slug)',
+      'name, slug, description, price, size, quantity, image, size_prices, collections(slug)',
     );
 
   if (productError) {
@@ -30,6 +44,7 @@ export const GetProducts = async (req: Request, res: Response) => {
   const convertedProducts = products.map((product) => ({
     ...product,
     price: parseFloat((product.price * rate).toFixed(2)),
+    size_prices: convertSizePrices(product.size_prices, rate),
   }));
 
   res
@@ -55,7 +70,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
 
   const { data: CollectionProducts, error: producterror } = await supabaseAdmin
     .from('products')
-    .select('id,name,slug,description,price,size,quantity,image')
+    .select('id,name,slug,description,price,size,quantity,image,size_prices')
     .eq('collectionid', CollectionId.id);
   if (producterror) {
     logger.error({ producterror }, 'Error fetching products for collection');
@@ -66,6 +81,7 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   const convertedProductCollection = CollectionProducts.map((collection) => ({
     ...collection,
     price: parseFloat((collection.price * rate).toFixed(2)),
+    size_prices: convertSizePrices(collection.size_prices, rate),
     currency,
   }));
 
@@ -92,7 +108,7 @@ export const GetProductByName = async (req: Request, res: Response) => {
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
     .select(
-      'id,name,slug,description,price,size,quantity,image,collections(name)',
+      'id,name,slug,description,price,size,quantity,image,size_prices,collections(name)',
     )
     .ilike('slug', `%${Slug}%`);
   if (productError || !product) {
@@ -103,6 +119,7 @@ export const GetProductByName = async (req: Request, res: Response) => {
   const convertedProduct = product.map((product) => ({
     ...product,
     price: parseFloat((product.price * rate).toFixed(2)),
+    size_prices: convertSizePrices(product.size_prices, rate),
   }));
 
   res.status(200).json({
