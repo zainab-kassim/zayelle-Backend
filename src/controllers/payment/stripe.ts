@@ -300,7 +300,7 @@ export const cancelCheckout = async (req: Request, res: Response) => {
 
   const { data: order, error: orderError } = await supabaseAdmin
     .from('order')
-    .select('id,status,checkoutSession_id')
+    .select('id,status,checkoutSession_id,cart_id')
     .eq('id', order_id)
     .eq('user_id', req.user.id)
     .single();
@@ -339,6 +339,14 @@ export const cancelCheckout = async (req: Request, res: Response) => {
 
   if (canceled && !cancelError) {
     await restoreInventoryOnFailure(order.id);
+
+    // record what was ordered even though checkout was canceled — best
+    // effort, keeps the cart intact for a retry
+    try {
+      await handlePostPayment(order.id, order.cart_id, { clearCart: false });
+    } catch (err) {
+      logger.error({ err }, 'Failed to record order items for canceled order');
+    }
   }
 
   // close the session on Stripe's side too so it can't be paid later; this

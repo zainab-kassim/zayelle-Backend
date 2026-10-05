@@ -23,7 +23,7 @@ export const stripeWebhook = async (req: Request, res: Response) => {
       .update({ status: 'canceled' })
       .eq('checkoutSession_id', session.id)
       .eq('status', 'pending')
-      .select('id')
+      .select('id, cart_id')
       .single();
 
     if (!order || orderError) {
@@ -32,6 +32,13 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     }
 
     await restoreInventoryOnFailure(order.id);
+
+    // still record what was ordered — best effort, keeps the cart
+    try {
+      await handlePostPayment(order.id, order.cart_id, { clearCart: false });
+    } catch (err) {
+      logger.error({ err }, 'Failed to record order items for canceled order');
+    }
 
     // leave the cart intact so the user can start a fresh checkout
     return res
