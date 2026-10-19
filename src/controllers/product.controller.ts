@@ -2,7 +2,13 @@ import { Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabaseAdmin';
 import { getCachedRates } from '../utils/getCachedRates';
 import { getRate } from '../utils/getRate';
+import { getOrSetCache } from '../utils/simpleCache';
 import logger from '../middleware/logger';
+
+// product data only changes through direct DB writes (no admin endpoint
+// exists), so a few minutes of staleness is a fine tradeoff for cutting
+// repeat Supabase round-trips on every page view
+const PRODUCTS_CACHE_TTL = 3 * 60 * 1000;
 
 // converts a product's per-size price overrides (if any) into the request's currency
 function convertSizePrices(
@@ -23,11 +29,16 @@ export const GetProducts = async (req: Request, res: Response) => {
   const rates = await getCachedRates();
   const rate = getRate(rates, currency);
 
-  const { data: products, error: productError } = await supabaseAdmin
-    .from('products')
-    .select(
-      'name, slug, description, price, size, quantity, image, size_prices, collections(slug)',
-    );
+  const { data: products, error: productError } = await getOrSetCache(
+    'products:all',
+    PRODUCTS_CACHE_TTL,
+    async () =>
+      await supabaseAdmin
+        .from('products')
+        .select(
+          'name, slug, description, price, size, quantity, image, size_prices, collections(slug)',
+        ),
+  );
 
   if (productError) {
     logger.error(
@@ -58,20 +69,32 @@ export const GetProductbyCollectionId = async (req: Request, res: Response) => {
   const rate = getRate(rates, currency);
   const collectionSlug = req.params.collectionSlug;
 
-  const { data: CollectionId, error: collectionError } = await supabaseAdmin
-    .from('collections')
-    .select('id')
-    .eq('slug', collectionSlug)
-    .single();
+  const { data: CollectionId, error: collectionError } = await getOrSetCache(
+    `collection-id:${collectionSlug}`,
+    PRODUCTS_CACHE_TTL,
+    async () =>
+      await supabaseAdmin
+        .from('collections')
+        .select('id')
+        .eq('slug', collectionSlug)
+        .single(),
+  );
   if (collectionError || !CollectionId) {
     logger.error({ collectionError }, 'Collection not found');
     return res.status(404).json({ message: 'Collection not found' });
   }
 
-  const { data: CollectionProducts, error: producterror } = await supabaseAdmin
-    .from('products')
-    .select('id,name,slug,description,price,size,quantity,image,size_prices')
-    .eq('collectionid', CollectionId.id);
+  const { data: CollectionProducts, error: producterror } = await getOrSetCache(
+    `products:collection:${CollectionId.id}`,
+    PRODUCTS_CACHE_TTL,
+    async () =>
+      await supabaseAdmin
+        .from('products')
+        .select(
+          'id,name,slug,description,price,size,quantity,image,size_prices',
+        )
+        .eq('collectionid', CollectionId.id),
+  );
   if (producterror) {
     logger.error({ producterror }, 'Error fetching products for collection');
     return res.status(500).json({
@@ -105,12 +128,17 @@ export const GetProductByName = async (req: Request, res: Response) => {
   const rate = getRate(rates, currency);
   const Slug = req.params.slug;
 
-  const { data: product, error: productError } = await supabaseAdmin
-    .from('products')
-    .select(
-      'id,name,slug,description,price,size,quantity,image,size_prices,collections(name)',
-    )
-    .ilike('slug', `%${Slug}%`);
+  const { data: product, error: productError } = await getOrSetCache(
+    `product:${Slug}`,
+    PRODUCTS_CACHE_TTL,
+    async () =>
+      await supabaseAdmin
+        .from('products')
+        .select(
+          'id,name,slug,description,price,size,quantity,image,size_prices,collections(name)',
+        )
+        .ilike('slug', `%${Slug}%`),
+  );
   if (productError || !product) {
     logger.error({ productError }, 'Product not found');
     return res.status(404).json({ message: 'Product not found' });
