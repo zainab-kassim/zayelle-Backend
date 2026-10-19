@@ -31,6 +31,13 @@ const app = express();
 // Trust the first proxy (if behind a proxy like Nginx or Heroku)
 app.set('trust proxy', 1);
 
+// Kept ahead of every other middleware so an uptime monitor can hit this to
+// stop Render's free tier from spinning down, without touching the DB or
+// any auth/CORS/rate-limit logic
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info({ method: req.method, url: req.url }, 'Incoming request');
   next();
