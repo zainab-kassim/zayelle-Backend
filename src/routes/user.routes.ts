@@ -6,6 +6,7 @@ import {
   refreshToken,
   ForgotPassword,
   ResetPassword,
+  ValidateResetToken,
 } from '../controllers/user.controller';
 import { handleAsyncErr } from '../utils/handleAsyncErr';
 import { Router } from 'express';
@@ -49,6 +50,11 @@ router.post(
   authLimiter,
   validateUser(resetPasswordSchema),
   handleAsyncErr(ResetPassword),
+);
+router.get(
+  '/reset-password/validate',
+  authLimiter,
+  handleAsyncErr(ValidateResetToken),
 );
 
 //Refresh Token

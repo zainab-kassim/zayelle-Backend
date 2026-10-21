@@ -429,3 +429,32 @@ export const ResetPassword = async (req: Request, res: Response) => {
 
   return res.status(200).json({ message: 'Password updated. Please log in.' });
 };
+
+// read-only check so the reset-password page can show a live countdown to
+// the real expiry instead of only finding out on submit — never marks the
+// token used
+export const ValidateResetToken = async (req: Request, res: Response) => {
+  const token = typeof req.query.token === 'string' ? req.query.token : '';
+
+  if (!token) {
+    return res.status(200).json({ valid: false });
+  }
+
+  const tokenHash = hashToken(token);
+
+  const { data: resetRow } = await supabaseAdmin
+    .from('password_reset_tokens')
+    .select('expires_at, used_at')
+    .eq('token_hash', tokenHash)
+    .single();
+
+  if (
+    !resetRow ||
+    resetRow.used_at ||
+    new Date(resetRow.expires_at).getTime() < Date.now()
+  ) {
+    return res.status(200).json({ valid: false });
+  }
+
+  return res.status(200).json({ valid: true, expiresAt: resetRow.expires_at });
+};
