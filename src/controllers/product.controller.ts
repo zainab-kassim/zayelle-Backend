@@ -135,7 +135,7 @@ export const GetProductByName = async (req: Request, res: Response) => {
       await supabaseAdmin
         .from('products')
         .select(
-          'id,name,slug,description,price,size,quantity,image,size_prices,collections(name)',
+          'id,name,slug,description,price,size,quantity,image,size_prices,collections(name,slug)',
         )
         .ilike('slug', `%${Slug}%`),
   );

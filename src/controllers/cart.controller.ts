@@ -26,11 +26,11 @@ export const addtocart = async (req: Request, res: Response) => {
   const rates = await getCachedRates();
   const rate = getRate(rates, currency);
 
-  const { productid, quantity, size } = req.body;
+  const { productid, quantity, size, measurements } = req.body;
 
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
-    .select('price, size_prices')
+    .select('price, size_prices, collections(slug)')
     .eq('id', productid)
     .single();
 
@@ -38,6 +38,17 @@ export const addtocart = async (req: Request, res: Response) => {
     logger.error({ productError }, 'invalid product');
     return res.status(404).json({ message: 'invalid product' });
   }
+
+  // Floreal is made-to-measure — can't be cut without real measurements
+  const collection = Array.isArray(product.collections)
+    ? product.collections[0]
+    : product.collections;
+  if (collection?.slug === 'floreal-collection' && !measurements) {
+    return res.status(400).json({
+      message: 'Bust, waist, and hip measurements are required for this item',
+    });
+  }
+
   const unitprice = resolvePrice(product, size);
 
   const { data: existingcart } = await supabaseAdmin
@@ -74,7 +85,13 @@ export const addtocart = async (req: Request, res: Response) => {
       const { data: updatedCartItem, error: updateCartItemError } =
         await supabaseAdmin
           .from('cart_items')
-          .update({ quantity: updatedQuantity, price: updatedPrice })
+          .update({
+            quantity: updatedQuantity,
+            price: updatedPrice,
+            // overwrite with the latest submission rather than silently
+            // keep a stale set from the first add
+            ...(measurements ? { measurements } : {}),
+          })
           .select('id,quantity, price')
           .eq('id', existingcartitems.id)
           .single();
@@ -106,6 +123,7 @@ export const addtocart = async (req: Request, res: Response) => {
         price: unitprice * quantity,
         size,
         unitprice,
+        measurements: measurements ?? null,
       })
       .select(`id,product_id(name,slug,image), quantity, price, size`)
       .single();
@@ -147,6 +165,7 @@ export const addtocart = async (req: Request, res: Response) => {
       price: unitprice * quantity,
       size,
       unitprice,
+      measurements: measurements ?? null,
     })
     .select(`id,product_id(name,slug,image), quantity, price, size`)
     .single();

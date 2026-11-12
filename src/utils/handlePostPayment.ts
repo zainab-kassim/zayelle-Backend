@@ -27,6 +27,7 @@ export const handlePostPayment = async (
     price: item.price,
     size: item.size,
     unit_price: item.unitprice,
+    measurements: item.measurements ?? null,
   }));
 
   const { error: orderItemsError } = await supabaseAdmin
