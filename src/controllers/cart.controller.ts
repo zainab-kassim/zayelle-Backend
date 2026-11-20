@@ -30,13 +30,17 @@ export const addtocart = async (req: Request, res: Response) => {
 
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
-    .select('price, size_prices, collections(slug)')
+    .select('price, quantity, size_prices, collections(slug)')
     .eq('id', productid)
     .single();
 
   if (productError) {
     logger.error({ productError }, 'invalid product');
     return res.status(404).json({ message: 'invalid product' });
+  }
+
+  if (product.quantity <= 0) {
+    return res.status(400).json({ message: 'This item is sold out' });
   }
 
   // Floreal is made-to-measure — can't be cut without real measurements
